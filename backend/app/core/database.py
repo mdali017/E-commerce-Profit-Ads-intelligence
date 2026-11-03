@@ -26,6 +26,8 @@ if settings.DATABASE_URL.startswith("postgresql+asyncpg"):
     # Check if Neon DB or SSL required
     if "neon.tech" in settings.DATABASE_URL or "ssl" in settings.DATABASE_URL:
         engine_kwargs["connect_args"] = {"ssl": True}
+elif settings.DATABASE_URL.startswith("sqlite"):
+    engine_kwargs["connect_args"] = {"check_same_thread": False}
 
 engine = create_async_engine(settings.DATABASE_URL, **engine_kwargs)
 

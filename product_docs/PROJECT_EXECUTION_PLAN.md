@@ -90,19 +90,19 @@ E-commerce Profit & Ads intelligence/
   - [x] `backend` (FastAPI) ও `frontend` (Next.js) ইনিশিয়ালাইজেশন।
   - [x] Neon DB PostgreSQL ডাটাবেস সংযোগ কনফিগারেশন (`pool_pre_ping=True`)।
   - [x] এনভায়রনমেন্ট ভ্যারিয়েবল ফাইল (`.env` ও `.env.example`) সাজানো এবং ইন্টিগ্রেশন টেস্ট সম্পন্ন।
-- [ ] **Day 2: Multi-tenant Data Models & Auth System**
-  - [ ] ডাটাবেস মডেল তৈরি: `User`, `Tenant (Workspace)`, `Membership`, `Role`।
-  - [ ] সিকিউর পাসওয়ার্ড হ্যাশিং, JWT টোকেন জেনারেশন এবং Auth API (`/api/v1/auth/signup`, `/login`, `/me`)।
-  - [ ] Role-Based Access Control (RBAC): Owner, Admin, Marketer, Operator, Accountant।
-- [ ] **Day 3: Workspace Management & Switching API**
-  - [ ] ওয়ার্কস্পেস তৈরি, সদস্য ইনভাইটেশন এবং অ্যাক্টিভ ওয়ার্কস্পেস সুইচার এন্ডপয়েন্ট।
-  - [ ] প্রতিটি এপিআই রিকোয়েস্টে `tenant_id` ভ্যালিডেশন ডিপেন্ডেন্সি (`get_current_tenant`)।
-- [ ] **Day 4: Next.js Frontend Shell & Auth UI**
-  - [ ] Tailwind CSS + Shadcn UI ইনস্টলেশন ও সেটআপ।
-  - [ ] লগইন ও সাইনআপ পেজ ডেভেলপমেন্ট এবং টোকেন স্টোরেজ ম্যানেজমেন্ট।
-  - [ ] রেসপনসিভ ড্যাশবোর্ড সাইডবার, হেডার এবং ওয়ার্কস্পেস সুইচার ড্রপডাউন।
-- [ ] **Day 5: 🔍 Unit 1 Review & Checkpoint**
-  - [ ] **চেকলিস্ট:** ইউজার সাইনআপ, লগইন, নতুন ওয়ার্কস্পেস তৈরি ও সুইচিং, এবং Swagger UI (`/docs`) টেস্ট করা।
+- [x] **Day 2: Multi-tenant Data Models & Auth System**
+  - [x] ডাটাবেস মডেল তৈরি: `User`, `Tenant (Workspace)`, `Membership`, `Role`।
+  - [x] সিকিউর পাসওয়ার্ড হ্যাশিং, JWT টোকেন জেনারেশন এবং Auth API (`/api/v1/auth/signup`, `/login`, `/me`)।
+  - [x] Role-Based Access Control (RBAC): Owner, Admin, Marketer, Operator, Accountant।
+- [x] **Day 3: Workspace Management & Switching API**
+  - [x] ওয়ার্কস্পেস তৈরি, সদস্য ইনভাইটেশন এবং অ্যাক্টিভ ওয়ার্কস্পেস সুইচার এন্ডপয়েন্ট।
+  - [x] প্রতিটি এপিআই রিকোয়েস্টে `tenant_id` ভ্যালিডেশন ডিপেন্ডেন্সি (`get_current_tenant`)।
+- [x] **Day 4: Next.js Frontend Shell & Auth UI**
+  - [x] Tailwind CSS + Shadcn UI ইনস্টলেশন ও সেটআপ।
+  - [x] লগইন ও সাইনআপ পেজ ডেভেলপমেন্ট এবং টোকেন স্টোরেজ ম্যানেজমেন্ট।
+  - [x] রেসপনসিভ ড্যাশবোর্ড সাইডবার, হেডার এবং ওয়ার্কস্পেস সুইচার ড্রপডাউন।
+- [x] **Day 5: 🔍 Unit 1 Review & Checkpoint**
+  - [x] **চেকলিস্ট:** ইউজার সাইনআপ, লগইন, নতুন ওয়ার্কস্পেস তৈরি ও সুইচিং, এবং Swagger UI (`/docs`) টেস্ট করা।
 
 ---
 

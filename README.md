@@ -127,7 +127,7 @@ Open `http://localhost:3000` to view the dashboard.
 
 The development follows an 8-Unit roadmap detailed in [`product_docs/PROJECT_EXECUTION_PLAN.md`](./product_docs/PROJECT_EXECUTION_PLAN.md).
 
-- [x] **Unit 1: Core Foundation & Multi-Tenancy** (In Progress - Day 1 Complete)
+- [x] **Unit 1: Core Foundation & Multi-Tenancy** (100% Complete: Auth, Multi-Tenancy, RBAC & UI Shell)
 - [ ] **Unit 2: Product Catalog & COGS Engine**
 - [ ] **Unit 3: Order Engine & WooCommerce Ingestion**
 - [ ] **Unit 4: Courier Integration & Delivery Tracking**
@@ -135,3 +135,4 @@ The development follows an 8-Unit roadmap detailed in [`product_docs/PROJECT_EXE
 - [ ] **Unit 6: Profit & Loss (P&L) Financial Engine**
 - [ ] **Unit 7: Customer CRM & SMS Automation**
 - [ ] **Unit 8: Executive Dashboard & AI Insights**
+

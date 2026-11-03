@@ -1,41 +1,53 @@
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000/api/v1";
+import { authStorage } from "./auth";
+
+const API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000/api/v1";
 
 interface RequestOptions extends RequestInit {
-  token?: string;
-  tenantId?: string;
+  requiresAuth?: boolean;
+  requiresTenant?: boolean;
 }
 
 export async function apiClient<T>(
   endpoint: string,
   options: RequestOptions = {}
 ): Promise<T> {
-  const { token, tenantId, headers = {}, ...rest } = options;
+  const { requiresAuth = true, requiresTenant = false, headers = {}, ...rest } = options;
 
-  const requestHeaders: Record<string, string> = {
+  const reqHeaders: Record<string, string> = {
     "Content-Type": "application/json",
     ...(headers as Record<string, string>),
   };
 
-  if (token) {
-    requestHeaders["Authorization"] = `Bearer ${token}`;
+  if (requiresAuth) {
+    const token = authStorage.getToken();
+    if (token) {
+      reqHeaders["Authorization"] = `Bearer ${token}`;
+    }
   }
 
-  if (tenantId) {
-    requestHeaders["X-Tenant-ID"] = tenantId;
+  if (requiresTenant) {
+    const tenantId = authStorage.getActiveTenantId();
+    if (tenantId) {
+      reqHeaders["X-Tenant-ID"] = tenantId;
+    }
   }
 
-  const url = `${API_BASE_URL}${endpoint.startsWith("/") ? endpoint : `/${endpoint}`}`;
-
-  const response = await fetch(url, {
-    headers: requestHeaders,
+  const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+    headers: reqHeaders,
     ...rest,
   });
 
   if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
-    throw new Error(errorData.detail || `Request failed with status ${response.status}`);
+    let errorDetail = "An unexpected error occurred.";
+    try {
+      const errorData = await response.json();
+      errorDetail = errorData.detail || errorDetail;
+    } catch {
+      errorDetail = `Request failed with status ${response.status}`;
+    }
+    throw new Error(errorDetail);
   }
 
   return response.json();
 }
-

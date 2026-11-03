@@ -36,4 +36,4 @@ class Membership(Base, TimestampMixin):
     role = Column(SQLEnum(UserRole), default=UserRole.OWNER, nullable=False)
 
     tenant = relationship("Tenant", back_populates="memberships")
-
+    user = relationship("app.modules.auth.models.User", foreign_keys=[user_id])
