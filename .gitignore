@@ -1,0 +1,64 @@
+# =========================
+# Python / FastAPI
+# =========================
+backend/.venv/
+.venv/
+venv/
+ENV/
+env/
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+# Python builds & artifacts
+*.egg-info/
+dist/
+wheels/
+
+# Virtual environments
+.env
+.venv*
+backend/.env
+backend/*.db
+backend/*.sqlite3
+
+# Alembic
+alembic/versions/*.pyc
+
+# =========================
+# Node.js / Next.js
+# =========================
+frontend/node_modules/
+node_modules/
+.npm
+frontend/.next/
+.next/
+out/
+frontend/out/
+
+# Next.js build files
+*.tsbuildinfo
+next-env.d.ts
+
+# Node environment variables
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+frontend/.env*.local
+
+# =========================
+# IDEs & OS Files
+# =========================
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+.DS_Store
+Thumbs.db
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
