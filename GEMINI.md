@@ -12,3 +12,4 @@
     - `add login/signup flow, workspace switcher and member permissions`
     - `fix tailwind css build and update dev server config`
     - `add product cost models and cogs tracking api`
+

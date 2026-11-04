@@ -38,9 +38,9 @@ class Settings(BaseSettings):
                 v = v.replace("postgresql://", "postgresql+asyncpg://", 1)
             elif v.startswith("postgres://"):
                 v = v.replace("postgres://", "postgresql+asyncpg://", 1)
-            # Remove sslmode=require from query string as asyncpg handles SSL via connect_args
-            if "sslmode=require" in v:
-                v = v.replace("?sslmode=require", "").replace("&sslmode=require", "")
+            # asyncpg handles SSL via connect_args; strip libpq query parameters from URL
+            if "?" in v:
+                v = v.split("?")[0]
         return v
 
     model_config = SettingsConfigDict(
