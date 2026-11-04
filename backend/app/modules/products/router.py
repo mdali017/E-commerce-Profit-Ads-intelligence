@@ -19,6 +19,8 @@ from app.modules.products.schemas import (
     ProductVariantResponse,
     ProductCostUpdate,
     CostCoverageStats,
+    BulkCostUploadRequest,
+    BulkCostUploadResult,
 )
 from app.modules.products.service import ProductService
 
@@ -93,6 +95,25 @@ async def get_cost_coverage_stats(
     Crucial for warning users about incomplete P&L profit figures.
     """
     return await ProductService.get_cost_coverage_stats(db, context.tenant_id)
+
+
+@router.post(
+    "/bulk/costs",
+    response_model=BulkCostUploadResult,
+    summary="Bulk Upload Product Costs",
+)
+async def bulk_upload_costs(
+    bulk_in: BulkCostUploadRequest,
+    context: TenantContext = Depends(
+        require_roles([UserRole.OWNER, UserRole.ADMIN, UserRole.OPERATOR])
+    ),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Bulk update cost prices via CSV/Excel payload for batch SKU updates.
+    Returns count of updated records and error list for unmatched SKUs.
+    """
+    return await ProductService.bulk_update_costs(db, context.tenant_id, bulk_in)
 
 
 @router.get(

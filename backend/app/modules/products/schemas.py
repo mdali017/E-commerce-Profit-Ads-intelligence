@@ -125,3 +125,24 @@ class CostCoverageStats(BaseModel):
     cost_coverage_percentage: float
     total_variants: int
     variants_with_cost: int
+
+
+# ==========================================
+# Bulk Cost Upload Schemas
+# ==========================================
+class BulkCostItem(BaseModel):
+    sku: str
+    cost_price: Decimal
+    packaging_cost: Optional[Decimal] = None
+    handling_cost: Optional[Decimal] = None
+    reason: Optional[str] = "Bulk CSV cost upload"
+
+
+class BulkCostUploadRequest(BaseModel):
+    items: List[BulkCostItem]
+
+
+class BulkCostUploadResult(BaseModel):
+    updated_count: int
+    failed_count: int
+    errors: List[dict] = []

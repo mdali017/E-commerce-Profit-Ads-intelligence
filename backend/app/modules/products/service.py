@@ -14,6 +14,8 @@ from app.modules.products.schemas import (
     ProductVariantUpdate,
     ProductCostUpdate,
     CostCoverageStats,
+    BulkCostUploadRequest,
+    BulkCostUploadResult,
 )
 
 
@@ -442,4 +444,74 @@ class ProductService:
             cost_coverage_percentage=coverage_pct,
             total_variants=total_variants,
             variants_with_cost=variants_with_cost,
+        )
+
+    @staticmethod
+    async def bulk_update_costs(
+        db: AsyncSession, tenant_id: str, bulk_in: BulkCostUploadRequest
+    ) -> BulkCostUploadResult:
+        updated = 0
+        errors = []
+
+        for item in bulk_in.items:
+            sku = item.sku.strip() if item.sku else ""
+            if not sku:
+                continue
+
+            # 1. Check if matching a variant SKU first
+            var_res = await db.execute(
+                select(ProductVariant).where(
+                    ProductVariant.tenant_id == tenant_id,
+                    ProductVariant.sku == sku,
+                )
+            )
+            variant = var_res.scalars().first()
+            if variant:
+                old_cost = variant.cost_price
+                variant.cost_price = item.cost_price
+                history = ProductCostHistory(
+                    tenant_id=tenant_id,
+                    product_id=variant.product_id,
+                    variant_id=variant.id,
+                    old_cost_price=old_cost,
+                    new_cost_price=item.cost_price,
+                    reason=item.reason or "Bulk CSV cost upload",
+                )
+                db.add(history)
+                updated += 1
+                continue
+
+            # 2. Check base product SKU
+            prod_res = await db.execute(
+                select(Product).where(
+                    Product.tenant_id == tenant_id,
+                    Product.sku == sku,
+                )
+            )
+            product = prod_res.scalars().first()
+            if product:
+                old_cost = product.cost_price
+                product.cost_price = item.cost_price
+                if item.packaging_cost is not None:
+                    product.packaging_cost = item.packaging_cost
+                if item.handling_cost is not None:
+                    product.handling_cost = item.handling_cost
+
+                history = ProductCostHistory(
+                    tenant_id=tenant_id,
+                    product_id=product.id,
+                    old_cost_price=old_cost,
+                    new_cost_price=item.cost_price,
+                    reason=item.reason or "Bulk CSV cost upload",
+                )
+                db.add(history)
+                updated += 1
+            else:
+                errors.append({"sku": sku, "error": f"SKU '{sku}' not found in catalog."})
+
+        await db.commit()
+        return BulkCostUploadResult(
+            updated_count=updated,
+            failed_count=len(errors),
+            errors=errors,
         )

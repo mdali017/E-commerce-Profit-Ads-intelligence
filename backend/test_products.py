@@ -143,6 +143,29 @@ async def test_products_module():
         assert len(updated_prod["cost_history"]) == 2  # Initial + Update
         print(f"7. Cost Price Audited & Updated: New Cost=BDT 490.00, History Records={len(updated_prod['cost_history'])}")
 
+        # 8b. Test Bulk Cost Upload via SKU
+        bulk_payload = {
+            "items": [
+                {
+                    "sku": prod2["sku"],
+                    "cost_price": "1200.00",
+                    "packaging_cost": "45.00",
+                    "handling_cost": "15.00",
+                    "reason": "Bulk CSV cost setup",
+                },
+                {
+                    "sku": "NON-EXISTENT-SKU",
+                    "cost_price": "500.00",
+                },
+            ]
+        }
+        bulk_res = await client.post("/api/v1/products/bulk/costs", headers=headers, json=bulk_payload)
+        assert bulk_res.status_code == 200, bulk_res.text
+        bulk_data = bulk_res.json()
+        assert bulk_data["updated_count"] == 1
+        assert bulk_data["failed_count"] == 1
+        print(f"7b. Bulk Cost Update: Updated={bulk_data['updated_count']}, Failed={bulk_data['failed_count']} (Handled gracefully)")
+
         # 9. Delete Variant
         del_var_res = await client.delete(
             f"/api/v1/products/{prod1_id}/variants/{var_id}", headers=headers
