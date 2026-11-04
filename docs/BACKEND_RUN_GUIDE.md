@@ -75,3 +75,4 @@ cd backend
 .venv\Scripts\Activate.ps1
 ```
 *(যদি PowerShell স্ক্রিপ্ট রান পলিসি ব্লক করে, তবে সরাসরি `.venv\Scripts\uvicorn ...` ব্যবহার করাই সবচেয়ে নিরাপদ ও ঝামেলামুক্ত।)*
+

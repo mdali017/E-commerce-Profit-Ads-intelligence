@@ -7,6 +7,7 @@ if sys.platform == "win32":
 from app.core.database import engine, Base
 import app.modules.auth.models
 import app.modules.workspaces.models
+import app.modules.products.models
 
 
 async def main():

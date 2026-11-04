@@ -10,6 +10,7 @@ from app.core.database import engine, Base, get_db
 # Import all module models so Base.metadata knows about them
 import app.modules.auth.models  # noqa: F401
 import app.modules.workspaces.models  # noqa: F401
+import app.modules.products.models  # noqa: F401
 
 # Import module routers
 from app.modules.auth.router import router as auth_router
