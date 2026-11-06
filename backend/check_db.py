@@ -9,6 +9,8 @@ import app.modules.auth.models
 import app.modules.workspaces.models
 import app.modules.products.models
 import app.modules.orders.models
+import app.modules.couriers.models
+
 
 
 async def main():

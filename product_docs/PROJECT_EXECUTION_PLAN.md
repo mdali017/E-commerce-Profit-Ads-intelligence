@@ -147,20 +147,21 @@ E-commerce Profit & Ads intelligence/
 ### 🟢 Unit 4: Courier Integration & Delivery Tracking (দিন ১৫ – ১৯)
 > **ফলাফল:** Steadfast, Pathao ও RedX-এর সাথে ডেলিভারি ট্র্যাকিং এবং ক্যাশ অন ডেলিভারি (COD) টাকা মেলানো।
 
-- [ ] **Day 15: Courier Connector Interface & Steadfast Integration**
-  - [ ] প্লাগেবল কুরিয়ার ইন্টারফেস ডিজাইন।
-  - [ ] Steadfast Courier API: কনসাইনমেন্ট বুকিং ও ট্র্যাকিং স্ট্যাটাস রিড।
-- [ ] **Day 16: Pathao Courier & RedX Connectors**
-  - [ ] Pathao API ক্লায়েন্ট (অর্ডার বুকিং ও স্ট্যাটাস আপডেট)।
-  - [ ] RedX কানেক্টর ও স্ট্যাটাস ম্যাপিং।
-- [ ] **Day 17: Unified Delivery Normalizer & Polling Worker**
-  - [ ] সব কুরিয়ারের স্ট্যাটাসকে ইউনিভার্সাল প্ল্যাটফর্ম স্ট্যাটাসে রূপান্তর (`Delivered`, `Returned`, `Lost`)।
-  - [ ] প্রতি ৩০ মিনিটে ব্যাকগ্রাউন্ড ট্র্যাকিং জব রান করানো।
-- [ ] **Day 18: Courier Payment & COD Settlement Reconciliation**
-  - [ ] কুরিয়ার থেকে প্রাপ্ত COD পেমেন্ট স্টেটমেন্ট ও ইনভয়েস এন্ট্রি।
-  - [ ] কোন অর্ডারের টাকা এসেছে আর কোন টাকা বকেয়া—তার স্পষ্ট রিপোর্ট।
-- [ ] **Day 19: 🔍 Unit 4 Review & Checkpoint**
-  - [ ] **চেকলিস্ট:** ড্যাশবোর্ড থেকে কুরিয়ার বুকিং, লাইভ ট্র্যাকিং স্ট্যাটাস আপডেট এবং COD রিকনসিলিয়েশন টেস্ট।
+- [x] **Day 15: Courier Connector Interface & Steadfast Integration**
+  - [x] প্লাগেবল কুরিয়ার ইন্টারফেস ডিজাইন।
+  - [x] Steadfast Courier API: কনসাইনমেন্ট বুকিং ও ট্র্যাকিং স্ট্যাটাস রিড।
+- [x] **Day 16: Pathao Courier & RedX Connectors**
+  - [x] Pathao API ক্লায়েন্ট (অর্ডার বুকিং ও স্ট্যাটাস আপডেট)।
+  - [x] RedX কানেক্টর ও স্ট্যাটাস ম্যাপিং।
+- [x] **Day 17: Unified Delivery Normalizer & Polling Worker**
+  - [x] সব কুরিয়ারের স্ট্যাটাসকে ইউনিভার্সাল প্ল্যাটফর্ম স্ট্যাটাসে রূপান্তর (`Delivered`, `Returned`, `Lost`)।
+  - [x] প্রতি ৩০ মিনিটে ব্যাকগ্রাউন্ড ট্র্যাকিং জব রান করানো।
+- [x] **Day 18: Courier Payment & COD Settlement Reconciliation**
+  - [x] কুরিয়ার থেকে প্রাপ্ত COD পেমেন্ট স্টেটমেন্ট ও ইনভয়েস এন্ট্রি।
+  - [x] কোন অর্ডারের টাকা এসেছে আর কোন টাকা বকেয়া—তার স্পষ্ট রিপোর্ট।
+- [x] **Day 19: 🔍 Unit 4 Review & Checkpoint**
+  - [x] **চেকলিস্ট:** ড্যাশবোর্ড থেকে কুরিয়ার বুকিং, লাইভ ট্র্যাকিং স্ট্যাটাস আপডেট এবং COD রিকনসিলিয়েশন টেস্ট।
+
 
 ---
 

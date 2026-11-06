@@ -23,6 +23,7 @@ interface OrderTableProps {
   onQuickConfirm: (orderId: string) => Promise<void>;
   onQuickCancel: (orderId: string) => Promise<void>;
   onDeleteOrder: (orderId: string) => Promise<void>;
+  onDispatchOrder?: (orderId: string) => Promise<void>;
 }
 
 export function OrderTable({
@@ -32,8 +33,10 @@ export function OrderTable({
   onQuickConfirm,
   onQuickCancel,
   onDeleteOrder,
+  onDispatchOrder,
 }: OrderTableProps) {
   const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
+
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -264,6 +267,28 @@ export function OrderTable({
                           Confirm
                         </button>
                       )}
+
+                      {/* One-click Send to Courier for Confirmed orders */}
+                      {order.status === "confirmed" && onDispatchOrder && (
+                        <button
+                          disabled={isActioning}
+                          onClick={async (e) => {
+                            e.stopPropagation();
+                            setActionLoadingId(order.id);
+                            try {
+                              await onDispatchOrder(order.id);
+                            } finally {
+                              setActionLoadingId(null);
+                            }
+                          }}
+                          className="px-2.5 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-[10px] transition-all flex items-center gap-1 shadow-xs disabled:opacity-50"
+                          title="Dispatch to Courier (Steadfast/Pathao)"
+                        >
+                          <Truck className="w-3 h-3" />
+                          Send Courier
+                        </button>
+                      )}
+
 
                       {/* Cancel for Pending/Confirmed */}
                       {(order.status === "pending" || order.status === "confirmed") && (

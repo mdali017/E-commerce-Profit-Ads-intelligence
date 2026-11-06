@@ -25,6 +25,10 @@ class OrderSource(str, Enum):
     SHOPIFY = "shopify"
     LANDING_PAGE = "landing_page"
     API = "api"
+    FACEBOOK = "facebook"
+    MESSENGER = "messenger"
+    WHATSAPP = "whatsapp"
+
 
 
 class OrderStatus(str, Enum):

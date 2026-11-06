@@ -16,6 +16,7 @@
 ## 📌 Unit Completion & Verification Test Report Standard
 - **Automatic Execution:** Every time a development Unit (or major checkpoint) is completed, automatically perform live browser/API verification and capture screenshots.
 - **Location:** Save all screenshots in `product_docs/screenshots/` and write the test report to `product_docs/unit_<N>_test_report.md`.
+- **Workflow Order (Mandatory):** Always generate the test report, capture screenshots, and present the report to the user **BEFORE** making any Git commit. Never commit changes to Git before the test report is completely generated and verified.
 - **Required Report Structure:**
   - Executive summary and status.
   - Test cases structured strictly with:
@@ -24,5 +25,6 @@
     - `description:` (Action taken / endpoint or UI tested)
     - `expected:` (Expected result)
   - Live data log & potential edge cases verified (idempotency, calculations, audit history).
+
 
 

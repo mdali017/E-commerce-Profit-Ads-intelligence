@@ -9,7 +9,9 @@ import {
   OrderStatus,
 } from "@/types";
 import { ordersApi } from "@/lib/orders";
+import { couriersApi } from "@/lib/couriers";
 import { OrderStats } from "@/components/orders/OrderStats";
+
 import { OrderTable } from "@/components/orders/OrderTable";
 import { ManualOrderModal } from "@/components/orders/ManualOrderModal";
 import { OrderDetailDrawer } from "@/components/orders/OrderDetailDrawer";
@@ -139,7 +141,18 @@ export default function OrdersPage() {
     await loadData();
   };
 
+  // Dispatch to Courier (Unit 4 integration)
+  const handleDispatchOrder = async (orderId: string) => {
+    try {
+      await couriersApi.dispatchOrder({ order_id: orderId });
+      await loadData();
+    } catch (err: any) {
+      alert(err?.message || "Failed to dispatch order to courier.");
+    }
+  };
+
   return (
+
     <div className="space-y-6">
       {/* Top Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -209,7 +222,18 @@ export default function OrdersPage() {
             if (tab.id === "cancelled") count = kpis.cancelled_orders;
           }
 
-          return (
+          // Dispatch to Courier (Unit 4 integration)
+  const handleDispatchOrder = async (orderId: string) => {
+    try {
+      await couriersApi.dispatchOrder({ order_id: orderId });
+      await loadData();
+    } catch (err: any) {
+      alert(err?.message || "Failed to dispatch order to courier.");
+    }
+  };
+
+  return (
+
             <button
               key={tab.id}
               onClick={() => setSelectedStatus(tab.id)}
@@ -274,7 +298,9 @@ export default function OrdersPage() {
         onQuickConfirm={handleQuickConfirm}
         onQuickCancel={handleQuickCancel}
         onDeleteOrder={handleDeleteOrder}
+        onDispatchOrder={handleDispatchOrder}
       />
+
 
       {/* Manual Order Modal (Day 10) */}
       <ManualOrderModal

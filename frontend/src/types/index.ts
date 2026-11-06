@@ -332,4 +332,103 @@ export interface OrderKPIStats {
   return_rate_percent: number;
 }
 
+// ==========================================
+// Courier & Shipment Types
+// ==========================================
+export type CourierProvider = "steadfast" | "pathao" | "redx" | "paperfly" | "custom";
+
+export type ShipmentStatus =
+  | "pending"
+  | "booked"
+  | "in_transit"
+  | "delivered"
+  | "partially_delivered"
+  | "returned"
+  | "cancelled"
+  | "lost";
+
+export interface CourierCredential {
+  id: string;
+  tenant_id: string;
+  provider: CourierProvider;
+  api_key: string;
+  secret_key?: string | null;
+  store_id?: string | null;
+  webhook_secret?: string | null;
+  is_active: boolean;
+  is_default: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CourierCredentialCreateInput {
+  provider: CourierProvider;
+  api_key: string;
+  secret_key?: string;
+  store_id?: string;
+  webhook_secret?: string;
+  is_active?: boolean;
+  is_default?: boolean;
+}
+
+export interface CourierTrackingEvent {
+  id: string;
+  event_status: string;
+  message: string;
+  location?: string | null;
+  timestamp: string;
+}
+
+export interface CourierShipment {
+  id: string;
+  tenant_id: string;
+  order_id: string;
+  provider: CourierProvider;
+  consignment_id: string;
+  tracking_code?: string | null;
+  invoice_number?: string | null;
+  status: ShipmentStatus;
+  raw_status?: string | null;
+  recipient_name: string;
+  recipient_phone: string;
+  recipient_address: string;
+  recipient_city?: string | null;
+  cod_amount: number;
+  collected_amount: number;
+  delivery_fee: number;
+  cod_fee: number;
+  return_fee: number;
+  is_settled: boolean;
+  settled_at?: string | null;
+  delivery_date?: string | null;
+  notes?: string | null;
+  created_at: string;
+  updated_at: string;
+  tracking_events?: CourierTrackingEvent[];
+}
+
+export interface BookShipmentRequestInput {
+  order_id: string;
+  provider?: CourierProvider;
+  custom_cod_amount?: number;
+  notes?: string;
+}
+
+export interface CourierKPIStats {
+  total_shipments: number;
+  booked_count: number;
+  in_transit_count: number;
+  delivered_count: number;
+  returned_count: number;
+  cancelled_count: number;
+  delivery_success_rate: number;
+  return_rate: number;
+  total_cod_amount: number;
+  total_collected_amount: number;
+  total_delivery_fees: number;
+  total_courier_charges: number;
+  unsettled_balance: number;
+}
+
+
 
