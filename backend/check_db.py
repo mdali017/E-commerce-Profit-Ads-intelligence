@@ -8,6 +8,7 @@ from app.core.database import engine, Base
 import app.modules.auth.models
 import app.modules.workspaces.models
 import app.modules.products.models
+import app.modules.orders.models
 
 
 async def main():

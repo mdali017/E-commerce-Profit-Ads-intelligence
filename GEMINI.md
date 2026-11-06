@@ -13,3 +13,16 @@
     - `fix tailwind css build and update dev server config`
     - `add product cost models and cogs tracking api`
 
+## 📌 Unit Completion & Verification Test Report Standard
+- **Automatic Execution:** Every time a development Unit (or major checkpoint) is completed, automatically perform live browser/API verification and capture screenshots.
+- **Location:** Save all screenshots in `product_docs/screenshots/` and write the test report to `product_docs/unit_<N>_test_report.md`.
+- **Required Report Structure:**
+  - Executive summary and status.
+  - Test cases structured strictly with:
+    - `issue:` (None/Passed or specific issue title)
+    - `screenshot:` (Markdown link or embedded image)
+    - `description:` (Action taken / endpoint or UI tested)
+    - `expected:` (Expected result)
+  - Live data log & potential edge cases verified (idempotency, calculations, audit history).
+
+

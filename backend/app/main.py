@@ -11,6 +11,7 @@ from app.core.database import engine, Base, get_db
 import app.modules.auth.models  # noqa: F401
 import app.modules.workspaces.models  # noqa: F401
 import app.modules.products.models  # noqa: F401
+import app.modules.orders.models  # noqa: F401
 
 # Import module routers
 from app.modules.auth.router import router as auth_router
