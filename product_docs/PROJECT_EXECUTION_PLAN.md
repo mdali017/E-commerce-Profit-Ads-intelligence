@@ -224,18 +224,18 @@ E-commerce Profit & Ads intelligence/
 ### 🟢 Unit 8: Executive Dashboard, AI Insights & Final Launch (দিন ৩৫ – ৪০)
 > **ফলাফল:** প্রধান ড্যাশবোর্ড, রুল-বেসড ও AI পরামর্শ এবং ফুল সিস্টেম লঞ্চ প্রস্তুতি।
 
-- [ ] **Day 35: Executive Unified Dashboard**
-  - [ ] ব্যবসায়ীর মূল ড্যাশবোর্ড: আজকের নিট প্রফিট, মোট অ্যাড স্পেন্ড, ডেলিভারি রেট (%) এবং রিয়েল ROAS।
-- [ ] **Day 36: Rule-Based Ad Health & Anomaly Alerts**
-  - [ ] হাই রিটার্ন যুক্ত ক্যাম্পেইন সতর্কবার্তা, ব্লিডিং অ্যাড অ্যালার্ট (যেখানে স্পেন্ড বেশি কিন্তু লাভ শূন্য)।
-- [ ] **Day 37: AI Business Analyst Engine**
-  - [ ] Gemini / Claude API দিয়ে ডেটা বিশ্লেষণ করে বাংলায় সহজ ও কার্যকরী পরামর্শ তৈরি।
-- [ ] **Day 38: SaaS Multi-Tenant Security & Polish**
-  - [ ] পারফরম্যান্স টিউনিং, ডাটাবেস ইনডেক্সিং ও সিকিউরিটি চেকিং।
-- [ ] **Day 39: End-to-End System Testing**
-  - [ ] সম্পূর্ণ ফ্লো টেস্ট: Ad ➔ Order ➔ Courier ➔ Delivery ➔ P&L ➔ SMS।
-- [ ] **Day 40: 🎯 Final MVP Demo & Project Sign-off**
-  - [ ] সম্পূর্ণ প্রজেক্টের লাইভ ডেমো এবং হ্যান্ডওভার।
+- [x] **Day 35: Executive Unified Dashboard**
+  - [x] ব্যবসায়ীর মূল ড্যাশবোর্ড: আজকের নিট প্রফিট, মোট অ্যাড স্পেন্ড, ডেলিভারি রেট (%) এবং রিয়েল ROAS।
+- [x] **Day 36: Rule-Based Ad Health & Anomaly Alerts**
+  - [x] হাই রিটার্ন যুক্ত ক্যাম্পেইন সতর্কবার্তা, ব্লিডিং অ্যাড অ্যালার্ট (যেখানে স্পেন্ড বেশি কিন্তু লাভ শূন্য)।
+- [x] **Day 37: AI Business Analyst Engine**
+  - [x] Gemini / Claude API দিয়ে ডেটা বিশ্লেষণ করে বাংলায় সহজ ও কার্যকরী পরামর্শ তৈরি।
+- [x] **Day 38: SaaS Multi-Tenant Security & Polish**
+  - [x] পারফরম্যান্স টিউনিং, ডাটাবেস ইনডেক্সিং ও সিকিউরিটি চেকিং।
+- [x] **Day 39: End-to-End System Testing**
+  - [x] সম্পূর্ণ ফ্লো টেস্ট: Ad ➔ Order ➔ Courier ➔ Delivery ➔ P&L ➔ SMS।
+- [x] **Day 40: 🎯 Final MVP Demo & Project Sign-off**
+  - [x] সম্পূর্ণ প্রজেক্টের লাইভ ডেমো এবং হ্যান্ডওভার।
 
 ---
 

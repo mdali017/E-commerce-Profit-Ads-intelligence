@@ -765,6 +765,101 @@ export interface TestSendSMSPayload {
   message: string;
 }
 
+// ==========================================
+// Executive Dashboard & AI Insights Types
+// ==========================================
+export interface ExecutiveKPIs {
+  gross_revenue: number;
+  delivered_revenue: number;
+  net_profit: number;
+  net_margin_percent: number;
+
+  total_ad_spend: number;
+  meta_claimed_roas: number;
+  real_delivered_roas: number;
+  true_poas: number;
+  break_even_roas: number;
+
+  total_orders: number;
+  delivered_orders: number;
+  returned_orders: number;
+  cancelled_orders: number;
+  delivery_success_rate: number;
+  return_rate: number;
+  unsettled_courier_balance: number;
+  total_opex: number;
+
+  total_customers: number;
+  repeat_rate_percent: number;
+  high_risk_customers_count: number;
+}
+
+export interface ExecutiveAlert {
+  id: string;
+  tenant_id: string;
+  alert_type: string;
+  severity: "critical" | "warning" | "info" | "opportunity";
+  title: string;
+  message: string;
+  action_cta?: string | null;
+  action_url?: string | null;
+  metrics_snapshot?: Record<string, any> | null;
+  is_dismissed: boolean;
+  created_at: string;
+}
+
+export interface BleedingCampaignSummary {
+  campaign_id: string;
+  campaign_name: string;
+  ad_spend: number;
+  meta_claimed_roas: number;
+  delivered_orders: number;
+  delivered_revenue: number;
+  delivered_profit: number;
+  actual_delivered_roas: number;
+  return_rate: number;
+  severity: string;
+  diagnostic_issue: string;
+  recommendation: string;
+}
+
+export interface SourceRevenueItem {
+  source: string;
+  order_count: number;
+  total_revenue: number;
+  percentage: number;
+}
+
+export interface DailyProfitTrendPoint {
+  date: string;
+  revenue: number;
+  ad_spend: number;
+  cogs: number;
+  net_profit: number;
+  delivered_orders: number;
+}
+
+export interface ExecutiveOverviewResponse {
+  date_range: string;
+  start_date: string;
+  end_date: string;
+  kpis: ExecutiveKPIs;
+  alerts: ExecutiveAlert[];
+  bleeding_campaigns: BleedingCampaignSummary[];
+  revenue_by_source: SourceRevenueItem[];
+  daily_trends: DailyProfitTrendPoint[];
+}
+
+export interface AIBriefing {
+  id: string;
+  date_range: string;
+  health_score: number;
+  executive_summary: string;
+  key_findings: string[];
+  action_items: string[];
+  generated_at: string;
+}
+
 
 
 

@@ -13,6 +13,7 @@ import app.modules.couriers.models
 import app.modules.ads.models
 import app.modules.finance.models
 import app.modules.crm.models
+import app.modules.analytics.models
 
 
 

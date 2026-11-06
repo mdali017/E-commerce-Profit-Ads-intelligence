@@ -16,6 +16,7 @@ import app.modules.couriers.models  # noqa: F401
 import app.modules.ads.models  # noqa: F401
 import app.modules.finance.models  # noqa: F401
 import app.modules.crm.models  # noqa: F401
+import app.modules.analytics.models  # noqa: F401
 
 
 
