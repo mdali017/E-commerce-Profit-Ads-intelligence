@@ -93,8 +93,8 @@ class AdsService:
     @classmethod
     async def get_primary_account(
         cls, db: AsyncSession, tenant_id: str
-    ) -> MetaAdAccount:
-        """Gets active primary account or creates simulated development account."""
+    ) -> Optional[MetaAdAccount]:
+        """Gets active primary account for the workspace if connected."""
         stmt = select(MetaAdAccount).where(
             and_(
                 MetaAdAccount.tenant_id == tenant_id,
@@ -102,27 +102,7 @@ class AdsService:
             )
         ).order_by(MetaAdAccount.is_primary.desc())
         res = await db.execute(stmt)
-        acc = res.scalars().first()
-
-        if not acc:
-            # Create default demo ad account for zero-configuration startup
-            acc = MetaAdAccount(
-                tenant_id=tenant_id,
-                account_id="act_ecomprofit_demo",
-                name="Official Brand Meta Ads (Demo)",
-                currency="BDT",
-                timezone_name="Asia/Dhaka",
-                access_token="mock_token_demo",
-                is_active=True,
-                is_primary=True,
-            )
-            db.add(acc)
-            await db.commit()
-            await db.refresh(acc)
-            await cls.sync_campaigns(db, tenant_id, acc)
-            await cls.sync_daily_insights(db, tenant_id, acc)
-
-        return acc
+        return res.scalars().first()
 
     @classmethod
     async def sync_campaigns(
@@ -174,6 +154,8 @@ class AdsService:
         """Fetches daily insights breakdown and stores in database."""
         if not account:
             account = await cls.get_primary_account(db, tenant_id)
+        if not account:
+            return []
 
         insights_data = await MetaMarketingConnector.fetch_insights(
             account.account_id, account.access_token
@@ -243,13 +225,12 @@ class AdsService:
         Calculates ground-truth attribution and True Delivered ROAS vs Meta Claimed ROAS.
         Cross-matches orders with campaigns via utm_campaign, campaign_id, or fbclid.
         """
-        # Ensure account & insights exist
-        await cls.get_primary_account(db, tenant_id)
-
         # 1. Fetch campaigns
         camp_stmt = select(MetaCampaign).where(MetaCampaign.tenant_id == tenant_id)
         camp_res = await db.execute(camp_stmt)
         campaigns = camp_res.scalars().all()
+        if not campaigns:
+            return []
 
         # 2. Fetch insights
         ins_stmt = select(MetaDailyInsight).where(MetaDailyInsight.tenant_id == tenant_id)

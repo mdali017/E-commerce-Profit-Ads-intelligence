@@ -429,78 +429,102 @@ class AnalyticsService:
 
         health_score = max(20, min(100, health_score))
 
-        # 2. Executive Summary in Bengali
-        exec_summary = (
-            f"চলতি সময়ে আপনার মোট ডেলিভার্ড রেভিনিউ ৳{kpis.delivered_revenue:,.2f} এবং নিট লাভ ৳{kpis.net_profit:,.2f} "
-            f"(নিট মার্জিন {kpis.net_margin_percent}%)। মেটা অ্যাড স্পেন্ড ৳{kpis.total_ad_spend:,.2f} এর বিপরীতে "
-            f"রিয়েল ডেলিভার্ড ROAS অর্জিত হয়েছে {kpis.real_delivered_roas:.2f}x, যেখানে প্রফিটেবল থাকার ব্রেক-ইভেন বেঞ্চমার্ক "
-            f"হলো {kpis.break_even_roas:.2f}x। ব্যবসায়িক ওভারঅল হেলথ স্কোর: {health_score}/১০০।"
+        # Check for clean brand-new workspace (zero orders and zero ad spend)
+        is_fresh_workspace = (
+            kpis.total_ad_spend == Decimal("0.00")
+            and kpis.delivered_revenue == Decimal("0.00")
+            and kpis.total_orders == 0
         )
 
-        # 3. Key Analytical Findings
-        findings: List[str] = []
-        # Finding 1: Logistics & Delivery
-        if kpis.delivered_orders + kpis.returned_orders > 0:
-            findings.append(
-                f"কুরিয়ার ডেলিভারি সাকসেস রেট {kpis.delivery_success_rate}% এবং রিটার্ন রেট {kpis.return_rate}%। "
-                f"মোট {kpis.delivered_orders}টি সফল ডেলিভারি ও {kpis.returned_orders}টি পার্সেল রিটার্ন এসেছে।"
+        if is_fresh_workspace:
+            health_score = 100
+            exec_summary = (
+                "স্বাগতম ProfitPulse-এ! আপনার স্টোর ওয়ার্কস্পেস সফলভাবে সক্রিয় হয়েছে। "
+                "প্রকৃত লাভ-ক্ষতি ও সঠিক আরওএএস (ROAS) ট্র্যাক করতে মেটা অ্যাড অ্যাকাউন্ট কানেক্ট করুন "
+                "অথবা আপনার প্রোডাক্ট ক্যাটালগ ও কুরিয়ার পার্সেল যুক্ত করুন।"
             )
+            findings = [
+                "বর্তমানে কোনো মেটা বিজ্ঞাপন ক্যাম্পেইন বা খরচ কানেক্ট করা হয়নি।",
+                "অর্ডারের তথ্য যুক্ত হলে স্বয়ংক্রিয়ভাবে কুরিয়ার ডেলিভারি ও নিট প্রফিট বিশ্লেষণ শুরু হবে।",
+            ]
+            action_items = [
+                "🔗 মেটা অ্যাড সেটিংসে গিয়ে ফেসবুক অ্যাড অ্যাকাউন্ট কানেক্ট করুন।",
+                "📦 প্রোডাক্ট ক্যাটালগে পণ্যের পাইকারি ও প্যাকেজিং খরচ (COGS) ইনপুট দিন।",
+                "🚚 স্টিডফাস্ট বা পাঠাও কুরিয়ার এপিআই ক্রেডেনশিয়াল যুক্ত করুন।",
+            ]
         else:
-            findings.append("বর্তমানে ডেলিভারি ট্রানজিশন পর্যবেক্ষণাধীন রয়েছে।")
+            # 2. Executive Summary in Bengali
+            exec_summary = (
+                f"চলতি সময়ে আপনার মোট ডেলিভার্ড রেভিনিউ ৳{kpis.delivered_revenue:,.2f} এবং নিট লাভ ৳{kpis.net_profit:,.2f} "
+                f"(নিট মার্জিন {kpis.net_margin_percent}%)। মেটা অ্যাড স্পেন্ড ৳{kpis.total_ad_spend:,.2f} এর বিপরীতে "
+                f"রিয়েল ডেলিভার্ড ROAS অর্জিত হয়েছে {kpis.real_delivered_roas:.2f}x, যেখানে প্রফিটেবল থাকার ব্রেক-ইভেন বেঞ্চমার্ক "
+                f"হলো {kpis.break_even_roas:.2f}x। ব্যবসায়িক ওভারঅল হেলথ স্কোর: {health_score}/১০০।"
+            )
 
-        # Finding 2: ROAS Discrepancy / Attribution
-        if kpis.total_ad_spend > 0:
-            if kpis.meta_claimed_roas > kpis.real_delivered_roas:
-                diff = round(kpis.meta_claimed_roas - kpis.real_delivered_roas, 2)
+            # 3. Key Analytical Findings
+            findings: List[str] = []
+            # Finding 1: Logistics & Delivery
+            if kpis.delivered_orders + kpis.returned_orders > 0:
                 findings.append(
-                    f"মেটা ড্যাশবোর্ডে ক্লেইম করা ROAS ({kpis.meta_claimed_roas:.2f}x) এর তুলনায় ডেলিভার্ড গ্রাউন্ড-ট্রুথ "
-                    f"ROAS ({kpis.real_delivered_roas:.2f}x) প্রায় {diff}x কম। এর প্রধান কারণ রিটার্ন হওয়া পার্সেল ও অনাদায়ি COD।"
+                    f"কুরিয়ার ডেলিভারি সাকসেস রেট {kpis.delivery_success_rate}% এবং রিটার্ন রেট {kpis.return_rate}%। "
+                    f"মোট {kpis.delivered_orders}টি সফল ডেলিভারি ও {kpis.returned_orders}টি পার্সেল রিটার্ন এসেছে।"
                 )
             else:
+                findings.append("বর্তমানে ডেলিভারি ট্রানজিশন পর্যবেক্ষণাধীন রয়েছে।")
+
+            # Finding 2: ROAS Discrepancy / Attribution
+            if kpis.total_ad_spend > 0:
+                if kpis.meta_claimed_roas > kpis.real_delivered_roas:
+                    diff = round(kpis.meta_claimed_roas - kpis.real_delivered_roas, 2)
+                    findings.append(
+                        f"মেটা ড্যাশবোর্ডে ক্লেইম করা ROAS ({kpis.meta_claimed_roas:.2f}x) এর তুলনায় ডেলিভার্ড গ্রাউন্ড-ট্রুথ "
+                        f"ROAS ({kpis.real_delivered_roas:.2f}x) প্রায় {diff}x কম। এর প্রধান কারণ রিটার্ন হওয়া পার্সেল ও অনাদায়ি COD।"
+                    )
+                else:
+                    findings.append(
+                        f"অ্যাডভারটাইজিং ডেলিভার্ড ROAS ({kpis.real_delivered_roas:.2f}x) স্বাস্থ্যকর অবস্থানে রয়েছে।"
+                    )
+
+            # Finding 3: Bleeding Campaigns
+            if overview.bleeding_campaigns:
                 findings.append(
-                    f"অ্যাডভারটাইজিং ডেলিভার্ড ROAS ({kpis.real_delivered_roas:.2f}x) স্বাস্থ্যকর অবস্থানে রয়েছে।"
+                    f"সিস্টেম {len(overview.bleeding_campaigns)}টি ব্লিডিং ক্যাম্পেইন শনাক্ত করেছে যেখানে বাজেট অপচয় হচ্ছে "
+                    f"(যেমন: '{overview.bleeding_campaigns[0].campaign_name}')।"
+                )
+            else:
+                findings.append("চলমান মেটা ক্যাম্পেইনগুলোতে গুরুতর কোন ব্লিডিং বা বাজেট লিকেজ পাওয়া যায়নি।")
+
+            # Finding 4: Courier Cash
+            if kpis.unsettled_courier_balance > Decimal("0.00"):
+                findings.append(
+                    f"কুরিয়ার কোম্পানিগুলোর কাছে ৳{kpis.unsettled_courier_balance:,.2f} ক্যাশ অন ডেলিভারি (COD) টাকা আটকে আছে।"
                 )
 
-        # Finding 3: Bleeding Campaigns
-        if overview.bleeding_campaigns:
-            findings.append(
-                f"সিস্টেম {len(overview.bleeding_campaigns)}টি ব্লিডিং ক্যাম্পেইন শনাক্ত করেছে যেখানে বাজেট অপচয় হচ্ছে "
-                f"(যেমন: '{overview.bleeding_campaigns[0].campaign_name}')।"
-            )
-        else:
-            findings.append("চলমান মেটা ক্যাম্পেইনগুলোতে গুরুতর কোন ব্লিডিং বা বাজেট লিকেজ পাওয়া যায়নি।")
+            # 4. Actionable Prioritized Recommendations
+            action_items: List[str] = []
+            if overview.bleeding_campaigns:
+                action_items.append(
+                    f"🚨 অবিলম্বে ব্লিডিং ক্যাম্পেইন '{overview.bleeding_campaigns[0].campaign_name}' পজ (Pause) করুন যাতে প্রতিদিনের বাজেট ড্রেন বন্ধ হয়।"
+                )
+            if kpis.return_rate >= 20.0:
+                action_items.append(
+                    "📦 হাই রিটার্ন জোনে (চট্টগ্রাম/সিলেট/গ্রামাঞ্চলে) পাঠানোর আগে ডেলিভারি চার্জ বিকাশ/নগদে বাধ্যতামূলক অগ্রিম সংগ্রহ করুন।"
+                )
+            if kpis.unsettled_courier_balance >= Decimal("15000.00"):
+                action_items.append(
+                    f"💳 স্টিডফাস্ট/পাঠাও কুরিয়ারের সাথে যোগাযোগ করে ৳{kpis.unsettled_courier_balance:,.2f} রেমিট্যান্স দ্রুত ব্যাংক ট্রান্সফার নিশ্চিত করুন।"
+                )
+            if kpis.real_delivered_roas >= kpis.break_even_roas and kpis.real_delivered_roas > 2.0:
+                action_items.append(
+                    "🚀 লাভজনক পারফর্মিং ক্যাম্পেইনগুলোর দৈনিক বাজেট ধাপে ধাপে ২০% বাড়িয়ে বিজনেস স্কেল করুন।"
+                )
+            if kpis.repeat_rate_percent < 15.0:
+                action_items.append(
+                    "📱 ড্যাশবোর্ড থেকে ডেলিভারি সম্পন্ন হওয়া গ্রাহকদের কাছে স্বয়ংক্রিয় রিভিউ ও পরবর্তী অর্ডারে ডিসকাউন্ট SMS পাঠান।"
+                )
 
-        # Finding 4: Courier Cash
-        if kpis.unsettled_courier_balance > Decimal("0.00"):
-            findings.append(
-                f"কুরিয়ার কোম্পানিগুলোর কাছে ৳{kpis.unsettled_courier_balance:,.2f} ক্যাশ অন ডেলিভারি (COD) টাকা আটকে আছে।"
-            )
-
-        # 4. Actionable Prioritized Recommendations
-        action_items: List[str] = []
-        if overview.bleeding_campaigns:
-            action_items.append(
-                f"🚨 অবিলম্বে ব্লিডিং ক্যাম্পেইন '{overview.bleeding_campaigns[0].campaign_name}' পজ (Pause) করুন যাতে প্রতিদিনের বাজেট ড্রেন বন্ধ হয়।"
-            )
-        if kpis.return_rate >= 20.0:
-            action_items.append(
-                "📦 হাই রিটার্ন জোনে (চট্টগ্রাম/সিলেট/গ্রামাঞ্চলে) পাঠানোর আগে ডেলিভারি চার্জ বিকাশ/নগদে বাধ্যতামূলক অগ্রিম সংগ্রহ করুন।"
-            )
-        if kpis.unsettled_courier_balance >= Decimal("15000.00"):
-            action_items.append(
-                f"💳 স্টিডফাস্ট/পাঠাও কুরিয়ারের সাথে যোগাযোগ করে ৳{kpis.unsettled_courier_balance:,.2f} রেমিট্যান্স দ্রুত ব্যাংক ট্রান্সফার নিশ্চিত করুন।"
-            )
-        if kpis.real_delivered_roas >= kpis.break_even_roas and kpis.real_delivered_roas > 2.0:
-            action_items.append(
-                "🚀 লাভজনক পারফর্মিং ক্যাম্পেইনগুলোর দৈনিক বাজেট ধাপে ধাপে ২০% বাড়িয়ে বিজনেস স্কেল করুন।"
-            )
-        if kpis.repeat_rate_percent < 15.0:
-            action_items.append(
-                "📱 ড্যাশবোর্ড থেকে ডেলিভারি সম্পন্ন হওয়া গ্রাহকদের কাছে স্বয়ংক্রিয় রিভিউ ও পরবর্তী অর্ডারে ডিসকাউন্ট SMS পাঠান।"
-            )
-
-        if not action_items:
-            action_items.append("আপনার ব্যবসায়িক মেট্রিক্স ভারসাম্যপূর্ণ। বর্তমান স্ট্র্যাটেজি বজায় রাখুন।")
+            if not action_items:
+                action_items.append("আপনার ব্যবসায়িক মেট্রিক্স ভারসাম্যপূর্ণ। বর্তমান স্ট্র্যাটেজি বজায় রাখুন।")
 
         # 5. Persist Briefing to Database
         briefing = AIBriefing(
