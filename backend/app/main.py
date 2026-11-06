@@ -13,6 +13,8 @@ import app.modules.workspaces.models  # noqa: F401
 import app.modules.products.models  # noqa: F401
 import app.modules.orders.models  # noqa: F401
 import app.modules.couriers.models  # noqa: F401
+import app.modules.ads.models  # noqa: F401
+
 
 
 # Import module routers

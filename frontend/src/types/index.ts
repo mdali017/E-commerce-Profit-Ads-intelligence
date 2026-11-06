@@ -430,5 +430,91 @@ export interface CourierKPIStats {
   unsettled_balance: number;
 }
 
+// ==========================================
+// Meta Ads & Attribution Types
+// ==========================================
+export interface MetaAdAccount {
+  id: string;
+  tenant_id: string;
+  account_id: string;
+  name: string;
+  currency: string;
+  timezone_name: string;
+  is_active: boolean;
+  is_primary: boolean;
+  last_synced_at?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ConnectAdAccountInput {
+  account_id: string;
+  name: string;
+  access_token: string;
+  currency?: string;
+  timezone_name?: string;
+  is_primary?: boolean;
+}
+
+export interface MetaCampaign {
+  id: string;
+  tenant_id: string;
+  ad_account_id: string;
+  campaign_id: string;
+  name: string;
+  objective?: string | null;
+  status: string;
+  daily_budget?: number | null;
+  lifetime_budget?: number | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CampaignPerformanceItem {
+  campaign_id: string;
+  campaign_name: string;
+  status: string;
+  spend: number;
+  impressions: number;
+  clicks: number;
+  cpc: number;
+  ctr: number;
+
+  meta_reported_purchases: number;
+  meta_reported_conversion_value: number;
+  meta_claimed_roas: number;
+
+  attributed_orders_count: number;
+  delivered_orders_count: number;
+  returned_orders_count: number;
+  actual_delivered_revenue: number;
+  actual_gross_profit: number;
+  actual_delivered_roas: number;
+  blended_poas: number;
+  roas_inflation_percent: number;
+}
+
+export interface AdsKPIStats {
+  total_spend: number;
+  total_impressions: number;
+  total_clicks: number;
+  average_cpc: number;
+  average_ctr: number;
+
+  meta_claimed_revenue: number;
+  meta_claimed_roas: number;
+
+  actual_delivered_revenue: number;
+  actual_delivered_roas: number;
+  blended_poas: number;
+
+  total_attributed_orders: number;
+  delivered_orders: number;
+  returned_orders: number;
+  delivery_rate_percent: number;
+}
+
+
+
 
 

@@ -168,21 +168,21 @@ E-commerce Profit & Ads intelligence/
 ### 🟢 Unit 5: Meta Ads Integration & Attribution Engine (দিন ২০ – ২৫)
 > **ফলাফল:** ফেসবুক অ্যাড খরচ আনা এবং "Ad Spend vs Actual Delivered Revenue" মেলানো।
 
-- [ ] **Day 20: Meta Marketing API Connector**
-  - [ ] Meta API ক্লায়েন্ট ও টোকেন ম্যানেজমেন্ট।
-  - [ ] Ad Accounts লিস্ট দেখা ও নির্দিষ্ট অ্যাকাউন্ট সিলেক্ট করা।
-- [ ] **Day 21: Meta Insights Data Pipeline**
-  - [ ] Campaign, Ad Set, Ad লেভেলে দৈনিক Spend, Impressions, Clicks এবং Meta Claimed Purchases সিঙ্ক।
-  - [ ] টাইমজোন হ্যান্ডলিং (UTC ➔ BDT)।
-- [ ] **Day 22: Ads Performance Dashboard UI**
-  - [ ] ক্যাম্পেইনভিত্তিক স্পেন্ড, Reported ROAS, Reported CPA-এর টেবিল ও গ্রাফিকাল ভিউ।
-- [ ] **Day 23: Attribution Engine (UTM & Click Matching)**
-  - [ ] অর্ডারের সাথে UTM Parameter (`utm_campaign`) ও `fbclid` ম্যাচিং।
-  - [ ] ফানেল কনফিডেন্স স্কোরিং (High / Medium / Unknown)।
-- [ ] **Day 24: Claimed ROAS vs Actual Delivered ROAS Comparison**
-  - [ ] মেটা ড্যাশবোর্ডে দেখানো রেজাল্ট বনাম **আসলে কত টাকার পণ্য ডেলিভারি ও কালেকশন হলো** তার পাশাপাশি তুলনা।
-- [ ] **Day 25: 🔍 Unit 5 Review & Checkpoint**
-  - [ ] **চেকলিস্ট:** মেটা অ্যাড ডেটা সিঙ্ক, ক্যাম্পেইন থেকে অর্ডার অ্যাট্রিবিউশন এবং Actual ROAS ক্যালকুলেশন টেস্ট।
+- [x] **Day 20: Meta Marketing API Connector**
+  - [x] Meta API ক্লায়েন্ট ও টোকেন ম্যানেজমেন্ট।
+  - [x] Ad Accounts লিস্ট দেখা ও নির্দিষ্ট অ্যাকাউন্ট সিলেক্ট করা।
+- [x] **Day 21: Meta Insights Data Pipeline**
+  - [x] Campaign, Ad Set, Ad লেভেলে দৈনিক Spend, Impressions, Clicks এবং Meta Claimed Purchases সিঙ্ক।
+  - [x] টাইমজোন হ্যান্ডলিং (UTC ➔ BDT)।
+- [x] **Day 22: Ads Performance Dashboard UI**
+  - [x] ক্যাম্পেইনভিত্তিক স্পেন্ড, Reported ROAS, Reported CPA-এর টেবিল ও গ্রাফিকাল ভিউ।
+- [x] **Day 23: Attribution Engine (UTM & Click Matching)**
+  - [x] অর্ডারের সাথে UTM Parameter (`utm_campaign`) ও `fbclid` ম্যাচিং।
+  - [x] ফানেল কনফিডেন্স স্কোরিং (High / Medium / Unknown)।
+- [x] **Day 24: Claimed ROAS vs Actual Delivered ROAS Comparison**
+  - [x] মেটা ড্যাশবোর্ডে দেখানো রেজাল্ট বনাম **আসলে কত টাকার পণ্য ডেলিভারি ও কালেকশন হলো** তার পাশাপাশি তুলনা।
+- [x] **Day 25: 🔍 Unit 5 Review & Checkpoint**
+  - [x] **চেকলিস্ট:** মেটা অ্যাড ডেটা সিঙ্ক, ক্যাম্পেইন থেকে অর্ডার অ্যাট্রিবিউশন এবং Actual ROAS ক্যালকুলেশন টেস্ট।
 
 ---
 
