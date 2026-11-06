@@ -637,6 +637,135 @@ export interface CampaignPnLItem {
   poas: number;
 }
 
+// ==========================================
+// Customer CRM & SMS Automation Types
+// ==========================================
+
+export interface Customer {
+  id: string;
+  tenant_id: string;
+  name: string;
+  phone: string;
+  email?: string | null;
+  city?: string | null;
+  address?: string | null;
+
+  total_orders: number;
+  delivered_orders: number;
+  returned_orders: number;
+  cancelled_orders: number;
+
+  total_spent: number;
+  average_order_value: number;
+  return_risk_score: number;
+  is_repeat_customer: boolean;
+  segment: "new" | "repeat" | "vip" | "at_risk" | "lapsed";
+  tags: string[];
+
+  opted_out_marketing: boolean;
+  first_order_date?: string | null;
+  last_order_date?: string | null;
+  notes?: string | null;
+
+  created_at: string;
+  updated_at: string;
+}
+
+export type SMSProvider = "simulated" | "elitbuzz" | "greenweb" | "ssl_wireless";
+export type SMSMessageStatus = "pending" | "sent" | "delivered" | "failed";
+
+export interface CustomerRecentOrder {
+  id: string;
+  order_number: string;
+  status: string;
+  total_amount: number;
+  order_date: string;
+  items_count?: number;
+  payment_method?: string;
+  created_at?: string;
+}
+
+export interface SMSMessageLog {
+  id: string;
+  tenant_id: string;
+  recipient_phone: string;
+  trigger_event?: string;
+  message_body: string;
+  message?: string;
+  status: string;
+  provider: string;
+  sms_count: number;
+  cost: number;
+  cost_bdt?: number;
+  error_message?: string | null;
+  sent_at: string;
+  created_at?: string;
+}
+
+export interface CustomerDetail extends Customer {
+  recent_orders: CustomerRecentOrder[];
+  message_history: SMSMessageLog[];
+}
+
+export interface CRMKPIStats {
+  total_customers: number;
+  repeat_customers_count: number;
+  repeat_rate_percent: number;
+  average_ltv: number;
+  high_risk_customers_count: number;
+  total_sms_sent: number;
+}
+
+export interface SMSGateway {
+  id: string;
+  tenant_id: string;
+  provider: SMSProvider | string;
+  sender_id: string;
+  api_key?: string;
+  base_url?: string;
+  api_url?: string | null;
+  is_active: boolean;
+  remaining_balance: number;
+  updated_at: string;
+}
+
+export interface ConfigureSMSGatewayPayload {
+  provider: SMSProvider | string;
+  api_key: string;
+  sender_id?: string;
+  api_url?: string;
+  base_url?: string;
+  is_active: boolean;
+}
+
+export interface SMSAutomationRule {
+  id: string;
+  tenant_id: string;
+  name: string;
+  trigger_event: string;
+  delay_minutes: number;
+  template_text: string;
+  is_active: boolean;
+  min_order_value?: number | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AutomationRuleCreatePayload {
+  name: string;
+  trigger_event: string;
+  delay_minutes: number;
+  template_text: string;
+  is_active: boolean;
+  min_order_value?: number;
+}
+
+export interface TestSendSMSPayload {
+  recipient_phone: string;
+  message: string;
+}
+
+
 
 
 

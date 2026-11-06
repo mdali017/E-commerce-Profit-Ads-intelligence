@@ -260,6 +260,14 @@ class OrderService:
             db.add(attribution)
 
         await db.commit()
+
+        # 9. Auto-sync Customer CRM profile
+        try:
+            from app.modules.crm.service import CRMService
+            await CRMService.sync_customer_from_order(db, tenant_id, order)
+        except Exception:
+            pass
+
         return await OrderService.get_order_detail(db, tenant_id, order.id)
 
     @staticmethod
@@ -321,6 +329,17 @@ class OrderService:
             await db.commit()
             await db.refresh(order, ["items", "status_history", "attribution"])
             order.item_count = len(order.items) if order.items else 0
+
+            # Auto-sync customer profile & trigger automations
+            try:
+                from app.modules.crm.service import CRMService
+                await CRMService.sync_customer_from_order(db, tenant_id, order)
+                if new_status_val == OrderStatus.DELIVERED.value:
+                    await CRMService.trigger_event_automations(db, tenant_id, "order_delivered", order.id)
+                elif new_status_val == OrderStatus.CONFIRMED.value:
+                    await CRMService.trigger_event_automations(db, tenant_id, "order_confirmed", order.id)
+            except Exception:
+                pass
 
         return order
 

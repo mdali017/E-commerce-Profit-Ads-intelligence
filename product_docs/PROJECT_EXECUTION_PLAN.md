@@ -208,16 +208,16 @@ E-commerce Profit & Ads intelligence/
 ### 🟢 Unit 7: Customer CRM & SMS Automation (দিন ৩১ – ৩৪)
 > **ফলাফল:** কাস্টমার ডাটাবেস এবং ডেলিভারি সম্পন্ন হলে স্বয়ংক্রিয় থ্যাংক ইউ ও রিভিউ রিকোয়েস্ট SMS।
 
-- [ ] **Day 31: Customer CRM & Purchase History**
-  - [ ] ফোন নম্বর ভিত্তিক ইউনিক কাস্টমার প্রোফাইল ও মোট অর্ডার হিস্ট্রি।
-  - [ ] কাস্টমার লাইফটাইম ভ্যালু (LTV) এবং রিটার্ন রিস্ক ট্যাগিং (যেমন: High Return Rate Warning)।
-- [ ] **Day 32: Bangladeshi SMS Gateway Integration**
-  - [ ] লোকাল SMS গেটওয়ে কানেক্টর (Elitbuzz / Greenweb / SSL Wireless)।
-- [ ] **Day 33: Delivery-Triggered SMS Automation**
-  - [ ] অর্ডার ডেলিভার্ড হলে নির্দিষ্ট সময় পর অটোমেটিক থ্যাংক ইউ বা রিভিউ SMS ট্রিগার।
-  - [ ] মেসেজ হিস্ট্রি ও ডেলিভারি লগ।
-- [ ] **Day 34: 🔍 Unit 7 Review & Checkpoint**
-  - [ ] **চেকলিস্ট:** কাস্টমার প্রোফাইল যাচাই, অটোমেশন রুল সেট এবং টেস্ট নম্বরে লাইভ SMS টেস্ট।
+- [x] **Day 31: Customer CRM & Purchase History**
+  - [x] ফোন নম্বর ভিত্তিক ইউনিক কাস্টমার প্রোফাইল ও মোট অর্ডার হিস্ট্রি।
+  - [x] কাস্টমার লাইফটাইম ভ্যালু (LTV) এবং রিটার্ন রিস্ক ট্যাগিং (যেমন: High Return Rate Warning)।
+- [x] **Day 32: Bangladeshi SMS Gateway Integration**
+  - [x] লোকাল SMS গেটওয়ে কানেক্টর (Elitbuzz / Greenweb / SSL Wireless)।
+- [x] **Day 33: Delivery-Triggered SMS Automation**
+  - [x] অর্ডার ডেলিভার্ড হলে নির্দিষ্ট সময় পর অটোমেটিক থ্যাংক ইউ বা রিভিউ SMS ট্রিগার।
+  - [x] মেসেজ হিস্ট্রি ও ডেলিভারি লগ।
+- [x] **Day 34: 🔍 Unit 7 Review & Checkpoint**
+  - [x] **চেকলিস্ট:** কাস্টমার প্রোফাইল যাচাই, অটোমেশন রুল সেট এবং টেস্ট নম্বরে লাইভ SMS টেস্ট।
 
 ---
 
