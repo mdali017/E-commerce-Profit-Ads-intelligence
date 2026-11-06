@@ -514,6 +514,130 @@ export interface AdsKPIStats {
   delivery_rate_percent: number;
 }
 
+// ==========================================
+// Finance & P&L Engine Types
+// ==========================================
+
+export interface OperatingExpense {
+  id: string;
+  tenant_id: string;
+  title: string;
+  category: string;
+  amount: number;
+  expense_date: string;
+  is_recurring: boolean;
+  recurrence_period: string;
+  notes?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ExpenseCreatePayload {
+  title: string;
+  category: string;
+  amount: number;
+  expense_date: string;
+  is_recurring: boolean;
+  recurrence_period: string;
+  notes?: string;
+}
+
+export interface PnLWaterfallItem {
+  line_name: string;
+  amount: number;
+  percentage_of_revenue: number;
+  type: "addition" | "deduction" | "subtotal" | "metric";
+}
+
+export interface PnLSummary {
+  currency: string;
+  date_basis: string;
+  start_date: string;
+  end_date: string;
+
+  total_orders_placed: number;
+  delivered_orders_count: number;
+  cancelled_orders_count: number;
+  returned_orders_count: number;
+  delivery_rate_percent: number;
+
+  gross_sales: number;
+  cancelled_returned_amount: number;
+  delivered_revenue: number;
+
+  total_cogs: number;
+  gross_profit: number;
+  gross_margin_percent: number;
+
+  courier_charges: number;
+  packaging_handling_fees: number;
+  payment_gateway_fees: number;
+  ad_spend: number;
+
+  contribution_profit: number;
+  contribution_margin_percent: number;
+
+  operating_expenses: number;
+  net_profit: number;
+  net_margin_percent: number;
+
+  breakeven_roas: number;
+  actual_delivered_roas: number;
+
+  waterfall: PnLWaterfallItem[];
+}
+
+export interface PnLTimeSeriesPoint {
+  report_date: string;
+  delivered_orders: number;
+  delivered_revenue: number;
+  cogs: number;
+  courier_cost: number;
+  packaging_handling: number;
+  ad_spend: number;
+  operating_expense: number;
+  gross_profit: number;
+  net_profit: number;
+  is_profitable: boolean;
+}
+
+export interface BreakEvenAnalysis {
+  delivered_revenue: number;
+  variable_costs: number;
+  variable_cost_ratio: number;
+  gross_margin_ratio: number;
+  breakeven_roas: number;
+  actual_delivered_roas: number;
+  safety_margin_percent: number;
+  status: "profitable" | "break_even" | "loss_making";
+  recommended_action: string;
+}
+
+export interface ProductPnLItem {
+  product_id: string;
+  product_name: string;
+  sku?: string | null;
+  units_sold: number;
+  delivered_revenue: number;
+  cogs: number;
+  gross_profit: number;
+  gross_margin_percent: number;
+}
+
+export interface CampaignPnLItem {
+  campaign_id: string;
+  campaign_name: string;
+  ad_spend: number;
+  delivered_revenue: number;
+  cogs: number;
+  courier_packaging_cost: number;
+  gross_profit: number;
+  net_contribution: number;
+  delivered_roas: number;
+  poas: number;
+}
+
+
 
 
 

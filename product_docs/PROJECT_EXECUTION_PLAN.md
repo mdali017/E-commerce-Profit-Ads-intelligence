@@ -189,19 +189,19 @@ E-commerce Profit & Ads intelligence/
 ### 🟢 Unit 6: Profit & Loss (P&L) Engine & Finance (দিন ২৬ – ৩০)
 > **ফলাফল:** পণ্যের খরচ, কুরিয়ার চার্জ, রিটার্ন ক্ষতি ও অ্যাড খরচ সমন্বয় করে নির্ভুল নিট লাভ/ক্ষতি নির্ধারণ।
 
-- [ ] **Day 26: P&L Mathematical Engine**
-  - [ ] নিট লাভ ক্যালকুলেশন লজিক:
+- [x] **Day 26: P&L Mathematical Engine**
+  - [x] নিট লাভ ক্যালকুলেশন লজিক:
     $$\text{Net Profit} = \text{Delivered Revenue} - \text{COGS} - \text{Courier Charge} - \text{Return Cost} - \text{Ad Spend} - \text{Operating Expenses}$$
-- [ ] **Day 27: Operating Expense Management**
-  - [ ] অফিস ভাড়া, বেতন, প্যাকেজিং ইত্যাদি ফিক্সড ও ভেরিয়েবল খরচ এন্ট্রি মডিউল।
-- [ ] **Day 28: Interactive Financial Dashboard**
-  - [ ] দৈনিক, সাপ্তাহিক ও মাসিক লাভ-ক্ষতির সামারি ও ট্রেন্ড চার্ট।
-  - [ ] ব্রেক-ইভেন ROAS ক্যালকুলেটর (Break-even Benchmark)।
-- [ ] **Day 29: Product-wise & Campaign-wise Profit Breakdown**
-  - [ ] কোন প্রোডাক্ট বা ক্যাম্পেইন আসলে মুনাফা দিচ্ছে এবং কোনটিতে লোকসান হচ্ছে তার ড্যাশবোর্ড ভিউ।
-  - [ ] এক ক্লিকে পূর্ণাঙ্গ P&L এক্সেল/CSV এক্সপোর্ট।
-- [ ] **Day 30: 🔍 Unit 6 Review & Checkpoint**
-  - [ ] **চেকলিস্ট:** টেস্ট ডেটা দিয়ে P&L হিসাব মেলানো, এক্সপেন্স সমন্বয় এবং এক্সেল এক্সপোর্ট যাচাই।
+- [x] **Day 27: Operating Expense Management**
+  - [x] অফিস ভাড়া, বেতন, প্যাকেজিং ইত্যাদি ফিক্সড ও ভেরিয়েবল খরচ এন্ট্রি মডিউল।
+- [x] **Day 28: Interactive Financial Dashboard**
+  - [x] দৈনিক, সাপ্তাহিক ও মাসিক লাভ-ক্ষতির সামারি ও ট্রেন্ড চার্ট।
+  - [x] ব্রেক-ইভেন ROAS ক্যালকুলেটর (Break-even Benchmark)।
+- [x] **Day 29: Product-wise & Campaign-wise Profit Breakdown**
+  - [x] কোন প্রোডাক্ট বা ক্যাম্পেইন আসলে মুনাফা দিচ্ছে এবং কোনটিতে লোকসান হচ্ছে তার ড্যাশবোর্ড ভিউ।
+  - [x] এক ক্লিকে পূর্ণাঙ্গ P&L এক্সেল/CSV এক্সপোর্ট।
+- [x] **Day 30: 🔍 Unit 6 Review & Checkpoint**
+  - [x] **চেকলিস্ট:** টেস্ট ডেটা দিয়ে P&L হিসাব মেলানো, এক্সপেন্স সমন্বয় এবং এক্সেল এক্সপোর্ট যাচাই।
 
 ---
 
