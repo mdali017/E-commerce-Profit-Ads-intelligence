@@ -27,10 +27,12 @@ export default function OverviewPage() {
   const [data, setData] = useState<ExecutiveOverviewResponse | null>(null);
   const [briefing, setBriefing] = useState<AIBriefing | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [isGeneratingBriefing, setIsGeneratingBriefing] = useState(false);
 
   const loadData = async (range: string = dateRange) => {
     setLoading(true);
+    setError(null);
     try {
       const [overviewRes, latestBriefing] = await Promise.all([
         analyticsApi.getOverview(range),
@@ -44,7 +46,7 @@ export default function OverviewPage() {
         generateBriefing(range);
       }
     } catch (err: any) {
-      console.error("Failed to load executive overview:", err);
+      setError(err?.message || "Failed to connect to backend server.");
     } finally {
       setLoading(false);
     }
@@ -133,6 +135,21 @@ export default function OverviewPage() {
           </button>
         </div>
       </div>
+
+      {error && (
+        <div className="p-4 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 flex items-center justify-between text-amber-800 dark:text-amber-200 text-sm">
+          <div className="flex items-center space-x-3">
+            <span className="font-semibold">⚠️ Server Notice:</span>
+            <span>{error}</span>
+          </div>
+          <button
+            onClick={() => loadData(dateRange)}
+            className="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-xs font-semibold transition-colors"
+          >
+            Retry Connection
+          </button>
+        </div>
+      )}
 
       {/* Loading Skeleton */}
       {loading && !data ? (

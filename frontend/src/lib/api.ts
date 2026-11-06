@@ -33,10 +33,17 @@ export async function apiClient<T>(
     }
   }
 
-  const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-    headers: reqHeaders,
-    ...rest,
-  });
+  let response: Response;
+  try {
+    response = await fetch(`${API_BASE_URL}${endpoint}`, {
+      headers: reqHeaders,
+      ...rest,
+    });
+  } catch (err: any) {
+    throw new Error(
+      `Cannot connect to backend server at ${API_BASE_URL}. Please ensure the FastAPI server is running.`
+    );
+  }
 
   if (!response.ok) {
     let errorDetail = "An unexpected error occurred.";
