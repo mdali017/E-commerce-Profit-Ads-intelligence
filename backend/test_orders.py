@@ -201,14 +201,81 @@ async def test_orders_module():
         assert Decimal(str(kpi["total_revenue"])) == Decimal("3710.00")
         assert Decimal(str(kpi["total_gross_profit"])) == Decimal("1955.00")
 
-        # 9. Clean up test order
+        # 9. Test WooCommerce Webhook Ingestion
+        wc_id = 998811
+        wc_webhook_payload = {
+            "id": wc_id,
+            "status": "processing",
+            "total": "1260.00",
+            "shipping_total": "60.00",
+            "discount_total": "0.00",
+            "payment_method": "cod",
+            "billing": {
+                "first_name": "Tamim",
+                "last_name": "Iqbal",
+                "phone": "01755443322",
+                "email": "tamim@example.com",
+                "address_1": "Banani Road 11",
+                "city": "Dhaka",
+            },
+            "shipping": {
+                "first_name": "Tamim",
+                "last_name": "Iqbal",
+                "address_1": "Banani Road 11",
+                "city": "Dhaka",
+            },
+            "line_items": [
+                {
+                    "id": 101,
+                    "name": "Luxury Silk Cotton Polo",
+                    "sku": sku_polo,
+                    "quantity": 1,
+                    "price": 1200.0,
+                    "total": "1200.00",
+                }
+            ],
+        }
+
+        wc_res = await client.post(
+            f"/api/v1/orders/webhook/woocommerce?tenant_id={tenant_id}",
+            json=wc_webhook_payload,
+        )
+        assert wc_res.status_code == 201, wc_res.text
+        wc_order = wc_res.json()
+        assert wc_order["external_order_id"] == f"wc_{wc_id}"
+        assert wc_order["source"] == "woocommerce"
+        # Since SKU matches sku_polo, COGS should have been auto-resolved!
+        assert Decimal(str(wc_order["total_cogs"])) == Decimal("600.00")
+        assert Decimal(str(wc_order["total_amount"])) == Decimal("1260.00")
+        print(f"9. WooCommerce Webhook Ingested: Order #{wc_order['order_number']} (External ID: {wc_order['external_order_id']})")
+        print(f"   -> Auto-matched Catalog SKU '{sku_polo}' COGS: BDT {wc_order['total_cogs']}")
+
+        # 10. Test WooCommerce Webhook Idempotency (Resend same webhook)
+        wc_dup_res = await client.post(
+            f"/api/v1/orders/webhook/woocommerce?tenant_id={tenant_id}",
+            json=wc_webhook_payload,
+        )
+        assert wc_dup_res.status_code in (200, 201)
+        assert wc_dup_res.json()["id"] == wc_order["id"]
+        print("10. WooCommerce Webhook Idempotency Verified: Duplicate payload returned existing order record.")
+
+        # 11. Test Background COGS Backfill Queue
+        backfill_res = await client.post("/api/v1/orders/sync/backfill-cogs", headers=headers)
+        assert backfill_res.status_code == 200, backfill_res.text
+        backfill_data = backfill_res.json()
+        print(f"11. Background Sync Queue: {backfill_data['message']}")
+
+        # 12. Clean up test orders
         del_res = await client.delete(f"/api/v1/orders/{order_id}", headers=headers)
         assert del_res.status_code == 200
-        print(f"9. Test Order Deleted Successfully (Cascade Cleanup Verified)")
+        del_wc = await client.delete(f"/api/v1/orders/{wc_order['id']}", headers=headers)
+        assert del_wc.status_code == 200
+        print(f"12. Test Orders Cleaned Up Successfully (Cascade Verified)")
 
         print("\n" + "=" * 65)
-        print(">>> ALL UNIT 3 (DAY 9) ORDER ENGINE TESTS PASSED 100%! <<<")
+        print(">>> ALL UNIT 3 ORDER ENGINE & CONNECTOR TESTS PASSED 100%! <<<")
         print("=" * 65 + "\n")
+
 
 
 if __name__ == "__main__":

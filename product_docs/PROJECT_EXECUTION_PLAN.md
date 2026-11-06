@@ -124,23 +124,23 @@ E-commerce Profit & Ads intelligence/
 ### 🟢 Unit 3: Order Engine & Ingestion System (দিন ৯ – ১৪)
 > **ফলাফল:** ওয়েবসাইট (WooCommerce) ও ফেসবুক মেসেঞ্জারের অর্ডার একক জায়গায় প্রসেসিং ও কনফার্মেশন।
 
-- [ ] **Day 9: Canonical Order Data Models**
-  - [ ] মডেল তৈরি: `Order`, `OrderItem`, `OrderStatusHistory`, `OrderAttribution`।
-  - [ ] স্ট্যান্ডার্ড অর্ডার স্ট্যাটাস সাইকেল: `Pending` ➔ `Confirmed` ➔ `In Courier` ➔ `Delivered` / `Cancelled` / `Returned`।
-- [ ] **Day 10: F-Commerce Manual Order Entry Form**
-  - [ ] ফেসবুক ও ফোন কলের অর্ডারের জন্য সুপার-ফাস্ট ম্যানুয়াল অর্ডার এন্ট্রি ফর্ম।
-  - [ ] কাস্টমার ইনফো অটো-সাজেস্ট এবং প্রোডাক্ট সিলেক্ট করলে অটোমেটিক প্রাইজ ও ডেলিভারি ফি ক্যালকুলেশন।
-- [ ] **Day 11: WooCommerce Integration Connector**
-  - [ ] WooCommerce REST API ক্লায়েন্ট (অর্ডার ফেচ ও ব্যাকগ্রাউন্ড পোলিং)।
-  - [ ] WooCommerce Webhook হ্যান্ডলার (নতুন অর্ডার পড়ার সাথে সাথে ডাটাবেসে রিয়েলটাইম ইনজেস্ট হওয়া)।
-  - [ ] ডুপ্লিকেট এন্ট্রি প্রতিরোধে আইডেমপোটেন্ট হ্যাশিং।
-- [ ] **Day 12: Order Operations & Confirmation Pipeline**
-  - [ ] অর্ডার ম্যানেজমেন্ট ড্যাশবোর্ড UI: স্ট্যাটাস ট্যাব, সার্চ, ফিল্টারিং ও বাল্ক অ্যাকশন।
-  - [ ] ফোন কনফার্মেশন কলিং চেকলিস্ট ও এক ক্লিকে স্ট্যাটাস আপডেট।
-- [ ] **Day 13: Background Order Sync Queue**
-  - [ ] ব্যাকগ্রাউন্ড সিঙ্ক জব সেটআপ (অর্ডারের ফেইল্ড সিঙ্ক রিট্রাই ও ডাটা ম্যাচিং)।
-- [ ] **Day 14: 🔍 Unit 3 Review & Checkpoint**
-  - [ ] **চেকলিস্ট:** ম্যানুয়াল অর্ডার এন্ট্রি, WooCommerce সিঙ্ক টেস্ট, ফিল্টারিং এবং স্ট্যাটাস পরিবর্তন যাচাই।
+- [x] **Day 9: Canonical Order Data Models**
+  - [x] মডেল তৈরি: `Order`, `OrderItem`, `OrderStatusHistory`, `OrderAttribution`।
+  - [x] স্ট্যান্ডার্ড অর্ডার স্ট্যাটাস সাইকেল: `Pending` ➔ `Confirmed` ➔ `In Courier` ➔ `Delivered` / `Cancelled` / `Returned`।
+- [x] **Day 10: F-Commerce Manual Order Entry Form**
+  - [x] ফেসবুক ও ফোন কলের অর্ডারের জন্য সুপার-ফাস্ট ম্যানুয়াল অর্ডার এন্ট্রি ফর্ম।
+  - [x] কাস্টমার ইনফো অটো-সাজেস্ট এবং প্রোডাক্ট সিলেক্ট করলে অটোমেটিক প্রাইজ ও ডেলিভারি ফি ক্যালকুলেশন।
+- [x] **Day 11: WooCommerce Integration Connector**
+  - [x] WooCommerce REST API ক্লায়েন্ট (অর্ডার ফেচ ও ব্যাকগ্রাউন্ড পোলিং)।
+  - [x] WooCommerce Webhook হ্যান্ডলার (নতুন অর্ডার পড়ার সাথে সাথে ডাটাবেসে রিয়েলটাইম ইনজেস্ট হওয়া)।
+  - [x] ডুপ্লিকেট এন্ট্রি প্রতিরোধে আইডেমপোটেন্ট হ্যাশিং।
+- [x] **Day 12: Order Operations & Confirmation Pipeline**
+  - [x] অর্ডার ম্যানেজমেন্ট ড্যাশবোর্ড UI: স্ট্যাটাস ট্যাব, সার্চ, ফিল্টারিং ও বাল্ক অ্যাকশন।
+  - [x] ফোন কনফার্মেশন কলিং চেকলিস্ট ও এক ক্লিকে স্ট্যাটাস আপডেট।
+- [x] **Day 13: Background Order Sync Queue**
+  - [x] ব্যাকগ্রাউন্ড সিঙ্ক জব সেটআপ (অর্ডারের ফেইল্ড সিঙ্ক রিট্রাই ও ডাটা ম্যাচিং)।
+- [x] **Day 14: 🔍 Unit 3 Review & Checkpoint**
+  - [x] **চেকলিস্ট:** ম্যানুয়াল অর্ডার এন্ট্রি, WooCommerce সিঙ্ক টেস্ট, ফিল্টারিং এবং স্ট্যাটাস পরিবর্তন যাচাই।
 
 ---
 

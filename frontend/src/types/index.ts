@@ -138,3 +138,198 @@ export interface BulkCostUploadResult {
   errors: { sku: string; error: string }[];
 }
 
+// ==========================================
+// Order Types
+// ==========================================
+export type OrderSource =
+  | "manual"
+  | "woocommerce"
+  | "shopify"
+  | "facebook"
+  | "messenger"
+  | "whatsapp"
+  | "phone_call";
+
+export type OrderStatus =
+  | "pending"
+  | "confirmed"
+  | "processing"
+  | "in_courier"
+  | "delivered"
+  | "cancelled"
+  | "returned";
+
+export type PaymentMethod =
+  | "cod"
+  | "bkash"
+  | "nagad"
+  | "bank_transfer"
+  | "prepaid"
+  | "card";
+
+export type PaymentStatus = "pending" | "partially_paid" | "paid" | "refunded";
+
+export type AttributionConfidence =
+  | "first_party_direct"
+  | "utm_match"
+  | "click_id_match"
+  | "organic"
+  | "fcommerce_manual";
+
+export interface OrderItem {
+  id: string;
+  order_id: string;
+  product_id?: string | null;
+  variant_id?: string | null;
+  product_name: string;
+  variant_name?: string | null;
+  sku?: string | null;
+  quantity: number;
+  unit_price: number;
+  unit_cost_price?: number | null;
+  unit_packaging_cost: number;
+  unit_handling_cost: number;
+  total_price: number;
+  total_cost?: number | null;
+  created_at: string;
+}
+
+export interface OrderItemCreateInput {
+  product_id?: string | null;
+  variant_id?: string | null;
+  product_name: string;
+  variant_name?: string | null;
+  sku?: string | null;
+  quantity: number;
+  unit_price: number;
+  unit_cost_price?: number | null;
+  unit_packaging_cost?: number;
+  unit_handling_cost?: number;
+}
+
+export interface OrderAttribution {
+  id: string;
+  order_id: string;
+  utm_source?: string | null;
+  utm_medium?: string | null;
+  utm_campaign?: string | null;
+  utm_content?: string | null;
+  utm_term?: string | null;
+  fbclid?: string | null;
+  campaign_id?: string | null;
+  adset_id?: string | null;
+  ad_id?: string | null;
+  attribution_confidence: string;
+}
+
+export interface OrderAttributionCreateInput {
+  utm_source?: string | null;
+  utm_medium?: string | null;
+  utm_campaign?: string | null;
+  utm_content?: string | null;
+  utm_term?: string | null;
+  fbclid?: string | null;
+  campaign_id?: string | null;
+  adset_id?: string | null;
+  ad_id?: string | null;
+  attribution_confidence?: AttributionConfidence;
+}
+
+export interface OrderStatusHistory {
+  id: string;
+  order_id: string;
+  from_status?: string | null;
+  to_status: string;
+  changed_by_user_id?: string | null;
+  reason?: string | null;
+  created_at: string;
+}
+
+export interface Order {
+  id: string;
+  tenant_id: string;
+  order_number: string;
+  customer_name: string;
+  customer_phone: string;
+  customer_email?: string | null;
+  shipping_address: string;
+  shipping_city?: string | null;
+  shipping_zone?: string | null;
+  customer_notes?: string | null;
+  internal_notes?: string | null;
+  source: OrderSource;
+  status: OrderStatus;
+  payment_method: PaymentMethod;
+  payment_status: PaymentStatus;
+  subtotal: number;
+  shipping_fee: number;
+  discount_amount: number;
+  total_amount: number;
+  total_cogs: number;
+  total_packaging_cost: number;
+  total_handling_cost: number;
+  gross_profit: number;
+  external_order_id?: string | null;
+  item_count?: number;
+  order_date: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface OrderDetail extends Order {
+  items: OrderItem[];
+  status_history: OrderStatusHistory[];
+  attribution?: OrderAttribution | null;
+}
+
+export interface OrderCreateInput {
+  customer_name: string;
+  customer_phone: string;
+  customer_email?: string | null;
+  shipping_address: string;
+  shipping_city?: string | null;
+  shipping_zone?: string | null;
+  customer_notes?: string | null;
+  internal_notes?: string | null;
+  source?: OrderSource;
+  payment_method?: PaymentMethod;
+  payment_status?: PaymentStatus;
+  shipping_fee?: number;
+  discount_amount?: number;
+  external_order_id?: string | null;
+  idempotency_key?: string | null;
+  items: OrderItemCreateInput[];
+  attribution?: OrderAttributionCreateInput | null;
+}
+
+export interface OrderUpdateInput {
+  customer_name?: string;
+  customer_phone?: string;
+  customer_email?: string | null;
+  shipping_address?: string;
+  shipping_city?: string | null;
+  shipping_zone?: string | null;
+  shipping_fee?: number;
+  discount_amount?: number;
+  payment_status?: PaymentStatus;
+  internal_notes?: string | null;
+}
+
+export interface OrderKPIStats {
+  total_orders: number;
+  pending_orders: number;
+  confirmed_orders: number;
+  processing_orders: number;
+  in_courier_orders: number;
+  delivered_orders: number;
+  cancelled_orders: number;
+  returned_orders: number;
+  total_revenue: number;
+  total_cogs: number;
+  total_gross_profit: number;
+  average_order_value: number;
+  delivery_rate_percent: number;
+  return_rate_percent: number;
+}
+
+

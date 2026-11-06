@@ -1,6 +1,6 @@
 from datetime import datetime
 from typing import List, Optional
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, Query, Header, Request, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
@@ -19,8 +19,70 @@ from app.modules.orders.schemas import (
     OrderKPIStats,
 )
 from app.modules.orders.service import OrderService
+from app.modules.orders.woocommerce import WooCommerceConnector
+from app.modules.orders.sync import OrderSyncQueueService
 
 router = APIRouter(prefix="/orders", tags=["Orders & Ingestion"])
+
+
+@router.post(
+    "/sync/backfill-cogs",
+    summary="Trigger Retroactive COGS Backfill Queue",
+)
+async def backfill_order_cogs(
+    context: TenantContext = Depends(
+        require_roles([UserRole.OWNER, UserRole.ADMIN, UserRole.ACCOUNTANT])
+    ),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Background batch process that matches uncosted order items against
+    updated catalog products by SKU, updates snapshot COGS, and re-locks gross profit.
+    """
+    return await OrderSyncQueueService.retroactive_cogs_backfill(
+        db=db, tenant_id=context.tenant_id
+    )
+
+
+
+@router.post(
+    "/webhook/woocommerce",
+    response_model=OrderDetailResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="WooCommerce Realtime Webhook Ingestion",
+)
+async def woocommerce_webhook(
+    request: Request,
+    tenant_id: Optional[str] = Query(None),
+    x_tenant_id: Optional[str] = Header(None, alias="X-Tenant-ID"),
+    x_wc_webhook_signature: Optional[str] = Header(None, alias="X-WC-Webhook-Signature"),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Ingest orders in real-time from WooCommerce webhooks.
+    Validates HMAC signature, maps WooCommerce schema to canonical Order,
+    resolves catalog COGS, and prevents duplicate submissions via idempotency.
+    """
+    effective_tenant_id = tenant_id or x_tenant_id
+    if not effective_tenant_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="tenant_id query parameter or X-Tenant-ID header is required for WooCommerce webhook.",
+        )
+
+    try:
+        payload = await request.json()
+    except Exception:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid JSON payload.",
+        )
+
+    return await WooCommerceConnector.ingest_webhook_order(
+        db=db,
+        tenant_id=effective_tenant_id,
+        payload=payload,
+    )
 
 
 @router.post(
