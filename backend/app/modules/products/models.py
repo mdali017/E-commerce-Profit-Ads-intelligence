@@ -108,3 +108,4 @@ class ProductCostHistory(Base, TimestampMixin, TenantMixin):
     reason = Column(String(255), nullable=True)  # e.g. "Supplier batch import", "Price increase"
 
     product = relationship("Product", back_populates="cost_history")
+
