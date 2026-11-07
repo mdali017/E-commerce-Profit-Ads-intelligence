@@ -59,15 +59,52 @@ async def get_tenant_context(
     """
     Validates that the current user has access to the workspace (tenant)
     and returns a structured TenantContext with membership & role.
+    If X-Tenant-ID header is omitted or empty, automatically resolves the user's
+    primary/active workspace so authenticated requests never fail needlessly.
     """
-    if not x_tenant_id:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="X-Tenant-ID header is required for workspace-scoped operations",
+    from app.modules.workspaces.models import Membership, Tenant, UserRole
+
+    # Fallback if X-Tenant-ID header was omitted or invalid
+    if not x_tenant_id or x_tenant_id.strip() in ("", "undefined", "null"):
+        result = await db.execute(
+            select(Membership)
+            .options(selectinload(Membership.tenant))
+            .where(Membership.user_id == current_user.id)
+            .order_by(Membership.created_at.asc())
+        )
+        membership = result.scalars().first()
+        if not membership:
+            # Auto-provision a default workspace
+            slug = current_user.email.split("@")[0].lower() + "-store"
+            slug_check = await db.execute(select(Tenant).where(Tenant.slug == slug))
+            if slug_check.scalars().first():
+                slug = f"{slug}-{current_user.id[:6]}"
+            new_tenant = Tenant(
+                name=f"{current_user.full_name or 'My'} Workspace",
+                slug=slug,
+                currency="BDT",
+                timezone="Asia/Dhaka",
+            )
+            db.add(new_tenant)
+            await db.flush()
+            membership = Membership(
+                tenant_id=new_tenant.id,
+                user_id=current_user.id,
+                role=UserRole.OWNER,
+            )
+            db.add(membership)
+            await db.commit()
+            await db.refresh(membership, ["tenant"])
+
+        return TenantContext(
+            tenant_id=membership.tenant_id,
+            user=current_user,
+            membership=membership,
+            role=membership.role,
+            tenant=membership.tenant,
         )
 
-    from app.modules.workspaces.models import Membership
-
+    # When X-Tenant-ID is explicitly provided, validate user's membership
     result = await db.execute(
         select(Membership)
         .options(selectinload(Membership.tenant))

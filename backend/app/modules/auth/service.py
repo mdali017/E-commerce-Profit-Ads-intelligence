@@ -1,5 +1,6 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
+from sqlalchemy.orm import selectinload
 from fastapi import HTTPException, status
 
 from app.core.security import get_password_hash, verify_password, create_access_token
@@ -56,7 +57,12 @@ class AuthService:
         await db.refresh(user)
 
         token = create_access_token(subject=user.id)
-        return Token(access_token=token, token_type="bearer", user=user)
+        return Token(
+            access_token=token,
+            token_type="bearer",
+            user=user,
+            active_tenant_id=tenant.id,
+        )
 
     @staticmethod
     async def authenticate(db: AsyncSession, login_data: UserLogin) -> Token:
@@ -73,6 +79,46 @@ class AuthService:
                 detail="Inactive user account."
             )
 
+        # Retrieve active workspace membership for this user
+        mem_res = await db.execute(
+            select(Membership)
+            .options(selectinload(Membership.tenant))
+            .where(Membership.user_id == user.id)
+            .order_by(Membership.created_at.asc())
+        )
+        membership = mem_res.scalars().first()
+        active_tenant_id = None
+
+        if membership:
+            active_tenant_id = membership.tenant_id
+        else:
+            # Auto-provision default workspace if none exists for this user
+            slug = user.email.split("@")[0].lower() + "-store"
+            slug_check = await db.execute(select(Tenant).where(Tenant.slug == slug))
+            if slug_check.scalars().first():
+                slug = f"{slug}-{user.id[:6]}"
+            tenant = Tenant(
+                name=f"{user.full_name or 'My'} Workspace",
+                slug=slug,
+                currency="BDT",
+                timezone="Asia/Dhaka",
+            )
+            db.add(tenant)
+            await db.flush()
+            membership = Membership(
+                tenant_id=tenant.id,
+                user_id=user.id,
+                role=UserRole.OWNER,
+            )
+            db.add(membership)
+            await db.commit()
+            active_tenant_id = tenant.id
+
         token = create_access_token(subject=user.id)
-        return Token(access_token=token, token_type="bearer", user=user)
+        return Token(
+            access_token=token,
+            token_type="bearer",
+            user=user,
+            active_tenant_id=active_tenant_id,
+        )
 

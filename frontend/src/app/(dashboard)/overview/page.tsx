@@ -58,7 +58,7 @@ export default function OverviewPage() {
       const res = await analyticsApi.generateAIBriefing(range);
       setBriefing(res);
     } catch (err: any) {
-      console.error("Failed to generate AI briefing:", err);
+      console.warn("Could not auto-generate AI briefing at this time:", err?.message || err);
     } finally {
       setIsGeneratingBriefing(false);
     }
@@ -79,6 +79,15 @@ export default function OverviewPage() {
 
   useEffect(() => {
     loadData(dateRange);
+
+    const handleTenantChanged = () => {
+      loadData(dateRange);
+    };
+
+    window.addEventListener("tenantChanged", handleTenantChanged);
+    return () => {
+      window.removeEventListener("tenantChanged", handleTenantChanged);
+    };
   }, [dateRange]);
 
   const dateRangeOptions = [

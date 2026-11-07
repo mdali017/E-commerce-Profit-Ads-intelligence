@@ -31,4 +31,5 @@ class Token(BaseModel):
     access_token: str
     token_type: str = "bearer"
     user: UserResponse
+    active_tenant_id: Optional[str] = None
 

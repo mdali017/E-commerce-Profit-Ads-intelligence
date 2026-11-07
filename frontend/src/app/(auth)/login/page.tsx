@@ -24,6 +24,7 @@ export default function LoginPage() {
       const data = await apiClient<{
         access_token: string;
         token_type: string;
+        active_tenant_id?: string | null;
         user: {
           id: string;
           email: string;
@@ -41,19 +42,27 @@ export default function LoginPage() {
       authStorage.setToken(data.access_token);
       authStorage.setUser(data.user);
 
-      // 2. Fetch user's workspaces
-      const memberships = await apiClient<
-        Array<{
-          tenant_id: string;
-          tenant: { id: string; name: string };
-        }>
-      >("/workspaces/me", {
-        method: "GET",
-        headers: { Authorization: `Bearer ${data.access_token}` },
-      });
+      if (data.active_tenant_id) {
+        authStorage.setActiveTenantId(data.active_tenant_id);
+      } else {
+        // Fallback: Fetch user's workspaces if active_tenant_id wasn't in response
+        try {
+          const memberships = await apiClient<
+            Array<{
+              tenant_id: string;
+              tenant: { id: string; name: string };
+            }>
+          >("/workspaces/me", {
+            method: "GET",
+            headers: { Authorization: `Bearer ${data.access_token}` },
+          });
 
-      if (memberships && memberships.length > 0) {
-        authStorage.setActiveTenantId(memberships[0].tenant_id);
+          if (memberships && memberships.length > 0) {
+            authStorage.setActiveTenantId(memberships[0].tenant_id);
+          }
+        } catch {
+          // Non-blocking: apiClient auto-heals tenantId or backend resolves default
+        }
       }
 
       router.push("/overview");

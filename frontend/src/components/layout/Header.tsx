@@ -51,6 +51,9 @@ export function Header() {
           if (!tenantId && list.length > 0) {
             authStorage.setActiveTenantId(list[0].id);
             setActiveTenantId(list[0].id);
+            if (typeof window !== "undefined") {
+              window.dispatchEvent(new CustomEvent("tenantChanged", { detail: list[0].id }));
+            }
           }
         })
         .catch(() => {

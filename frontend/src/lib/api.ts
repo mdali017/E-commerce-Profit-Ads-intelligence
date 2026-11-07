@@ -27,7 +27,30 @@ export async function apiClient<T>(
   }
 
   if (requiresTenant) {
-    const tenantId = authStorage.getActiveTenantId();
+    let tenantId = authStorage.getActiveTenantId();
+    if (!tenantId) {
+      const token = authStorage.getToken();
+      if (token && typeof window !== "undefined") {
+        try {
+          const res = await fetch(`${API_BASE_URL}/workspaces/me`, {
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+          });
+          if (res.ok) {
+            const list = await res.json();
+            if (Array.isArray(list) && list.length > 0 && typeof list[0]?.tenant_id === "string") {
+              const resolvedId: string = list[0].tenant_id;
+              tenantId = resolvedId;
+              authStorage.setActiveTenantId(resolvedId);
+            }
+          }
+        } catch {
+          // Ignore network errors here; fallback or backend will resolve
+        }
+      }
+    }
     if (tenantId) {
       reqHeaders["X-Tenant-ID"] = tenantId;
     }
