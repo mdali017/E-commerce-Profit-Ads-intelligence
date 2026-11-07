@@ -49,8 +49,11 @@ next-env.d.ts
 frontend/.env*.local
 
 # =========================
-# IDEs & OS Files
+# Local Test Projects (Never Commit)
 # =========================
+Test Ecommerce Website/
+"Test Ecommerce Website/"
+
 .vscode/
 .idea/
 *.sublime-project
