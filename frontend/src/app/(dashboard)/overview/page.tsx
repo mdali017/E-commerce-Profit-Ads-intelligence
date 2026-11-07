@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { analyticsApi } from "@/lib/analytics";
+import { productsApi } from "@/lib/products";
 import { ExecutiveOverviewResponse, AIBriefing } from "@/types";
 import { ExecutiveHeroKPIs } from "@/components/analytics/ExecutiveHeroKPIs";
 import { AIBusinessAnalystCard } from "@/components/analytics/AIBusinessAnalystCard";
@@ -9,6 +10,11 @@ import { BleedingCampaignsBanner } from "@/components/analytics/BleedingCampaign
 import { ExecutiveAlertsFeed } from "@/components/analytics/ExecutiveAlertsFeed";
 import { ChannelRevenueCard } from "@/components/analytics/ChannelRevenueCard";
 import { PnLTrendChart } from "@/components/pnl/PnLTrendChart";
+import { StoreSetupOnboardingCard } from "@/components/analytics/StoreSetupOnboardingCard";
+import { ConnectMetaModal } from "@/components/ads/ConnectMetaModal";
+import { ConfigureCourierModal } from "@/components/couriers/ConfigureCourierModal";
+import { WooCommerceSettingsModal } from "@/components/orders/WooCommerceSettingsModal";
+import { AddProductModal } from "@/components/products/AddProductModal";
 import {
   Sparkles,
   Calendar,
@@ -29,6 +35,12 @@ export default function OverviewPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isGeneratingBriefing, setIsGeneratingBriefing] = useState(false);
+
+  // Quick Integration Modals State
+  const [isStoreModalOpen, setIsStoreModalOpen] = useState(false);
+  const [isMetaModalOpen, setIsMetaModalOpen] = useState(false);
+  const [isCourierModalOpen, setIsCourierModalOpen] = useState(false);
+  const [isProductModalOpen, setIsProductModalOpen] = useState(false);
 
   const loadData = async (range: string = dateRange) => {
     setLoading(true);
@@ -172,6 +184,15 @@ export default function OverviewPage() {
         </div>
       ) : data ? (
         <>
+          {/* Store Setup & Instant Live Data Sync Hub */}
+          <StoreSetupOnboardingCard
+            integrations={data.integrations}
+            onConnectStore={() => setIsStoreModalOpen(true)}
+            onConnectMetaAds={() => setIsMetaModalOpen(true)}
+            onConnectCourier={() => setIsCourierModalOpen(true)}
+            onAddProductCost={() => setIsProductModalOpen(true)}
+          />
+
           {/* 1. Executive Hero KPIs */}
           <ExecutiveHeroKPIs kpis={data.kpis} />
 
@@ -243,6 +264,43 @@ export default function OverviewPage() {
           </div>
         </>
       ) : null}
+
+      {/* Store & Integration Setup Modals */}
+      <WooCommerceSettingsModal
+        isOpen={isStoreModalOpen}
+        onClose={() => {
+          setIsStoreModalOpen(false);
+          loadData(dateRange);
+        }}
+      />
+
+      <ConnectMetaModal
+        isOpen={isMetaModalOpen}
+        onClose={() => setIsMetaModalOpen(false)}
+        onConnected={() => {
+          setIsMetaModalOpen(false);
+          loadData(dateRange);
+        }}
+      />
+
+      <ConfigureCourierModal
+        isOpen={isCourierModalOpen}
+        onClose={() => setIsCourierModalOpen(false)}
+        onSaved={() => {
+          setIsCourierModalOpen(false);
+          loadData(dateRange);
+        }}
+      />
+
+      <AddProductModal
+        isOpen={isProductModalOpen}
+        onClose={() => setIsProductModalOpen(false)}
+        onSubmit={async (productData) => {
+          await productsApi.createProduct(productData);
+          setIsProductModalOpen(false);
+          loadData(dateRange);
+        }}
+      />
     </div>
   );
 }

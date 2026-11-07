@@ -839,6 +839,16 @@ export interface DailyProfitTrendPoint {
   delivered_orders: number;
 }
 
+export interface IntegrationStatus {
+  meta_ads_connected: boolean;
+  store_connected: boolean;
+  courier_connected: boolean;
+  products_configured: boolean;
+  total_connected: number;
+  all_connected: boolean;
+  is_fresh_workspace: boolean;
+}
+
 export interface ExecutiveOverviewResponse {
   date_range: string;
   start_date: string;
@@ -848,6 +858,7 @@ export interface ExecutiveOverviewResponse {
   bleeding_campaigns: BleedingCampaignSummary[];
   revenue_by_source: SourceRevenueItem[];
   daily_trends: DailyProfitTrendPoint[];
+  integrations?: IntegrationStatus;
 }
 
 export interface AIBriefing {

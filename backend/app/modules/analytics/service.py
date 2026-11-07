@@ -19,6 +19,7 @@ from app.modules.analytics.schemas import (
     BleedingCampaignSummary,
     SourceRevenueItem,
     DailyProfitTrendPoint,
+    IntegrationStatus,
     ExecutiveOverviewResponse,
     AIBriefingGenerateRequest,
     AIBriefingResponse,
@@ -28,6 +29,9 @@ from app.modules.couriers.service import CourierService
 from app.modules.crm.service import CRMService
 from app.modules.ads.service import AdsService
 from app.modules.orders.models import Order, OrderStatus
+from app.modules.ads.models import MetaAdAccount
+from app.modules.couriers.models import CourierCredential
+from app.modules.products.models import Product
 from app.modules.crm.models import Customer, CustomerSegment
 
 logger = logging.getLogger("analytics_service")
@@ -276,6 +280,48 @@ class AnalyticsService:
             high_risk_customers_count=crm_kpis.high_risk_customers_count,
         )
 
+        # 8. Check Integration & Onboarding Status
+        ad_acc_res = await db.execute(
+            select(func.count(MetaAdAccount.id)).where(
+                and_(MetaAdAccount.tenant_id == tenant_id, MetaAdAccount.is_active == True)
+            )
+        )
+        meta_connected = (ad_acc_res.scalar() or 0) > 0
+
+        courier_res = await db.execute(
+            select(func.count(CourierCredential.id)).where(
+                and_(CourierCredential.tenant_id == tenant_id, CourierCredential.is_active == True)
+            )
+        )
+        courier_connected = (courier_res.scalar() or 0) > 0
+
+        order_count_res = await db.execute(
+            select(func.count(Order.id)).where(Order.tenant_id == tenant_id)
+        )
+        store_connected = (order_count_res.scalar() or 0) > 0
+
+        prod_count_res = await db.execute(
+            select(func.count(Product.id)).where(Product.tenant_id == tenant_id)
+        )
+        products_configured = (prod_count_res.scalar() or 0) > 0
+
+        total_conn = sum([meta_connected, store_connected, courier_connected, products_configured])
+        is_fresh = (
+            pnl.delivered_revenue == Decimal("0.00")
+            and pnl.ad_spend == Decimal("0.00")
+            and total_conn < 4
+        )
+
+        integrations = IntegrationStatus(
+            meta_ads_connected=meta_connected,
+            store_connected=store_connected,
+            courier_connected=courier_connected,
+            products_configured=products_configured,
+            total_connected=total_conn,
+            all_connected=total_conn == 4,
+            is_fresh_workspace=is_fresh,
+        )
+
         return ExecutiveOverviewResponse(
             date_range=date_range,
             start_date=start_date.isoformat(),
@@ -285,6 +331,7 @@ class AnalyticsService:
             bleeding_campaigns=bleeding_campaigns,
             revenue_by_source=revenue_by_source,
             daily_trends=daily_trends,
+            integrations=integrations,
         )
 
     @classmethod

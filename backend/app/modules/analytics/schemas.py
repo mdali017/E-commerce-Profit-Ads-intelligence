@@ -81,6 +81,16 @@ class DailyProfitTrendPoint(BaseModel):
     delivered_orders: int
 
 
+class IntegrationStatus(BaseModel):
+    meta_ads_connected: bool = False
+    store_connected: bool = False
+    courier_connected: bool = False
+    products_configured: bool = False
+    total_connected: int = 0
+    all_connected: bool = False
+    is_fresh_workspace: bool = True
+
+
 class ExecutiveOverviewResponse(BaseModel):
     date_range: str
     start_date: str
@@ -90,6 +100,7 @@ class ExecutiveOverviewResponse(BaseModel):
     bleeding_campaigns: List[BleedingCampaignSummary]
     revenue_by_source: List[SourceRevenueItem]
     daily_trends: List[DailyProfitTrendPoint]
+    integrations: Optional[IntegrationStatus] = None
 
 
 class AIBriefingGenerateRequest(BaseModel):
