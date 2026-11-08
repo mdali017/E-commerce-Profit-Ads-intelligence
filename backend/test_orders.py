@@ -259,6 +259,91 @@ async def test_orders_module():
         assert wc_dup_res.json()["id"] == wc_order["id"]
         print("10. WooCommerce Webhook Idempotency Verified: Duplicate payload returned existing order record.")
 
+        # 10b. Test Universal Custom Store Webhook (Next.js / PHP / React / Wix)
+        custom_id = f"custom_{uuid.uuid4().hex[:6]}"
+        custom_payload = {
+            "order_id": custom_id,
+            "customer_name": "Asif Mahmud",
+            "phone": "01999887766",
+            "email": "asif@customsite.com",
+            "shipping_address": "House 10, Road 4, Dhanmondi",
+            "shipping_city": "Dhaka",
+            "delivery_fee": 100.0,
+            "payment_method": "bkash",
+            "payment_status": "paid",
+            "utm_source": "custom_store_ads",
+            "utm_campaign": "winter_campaign",
+            "items": [
+                {
+                    "name": "Luxury Silk Cotton Polo",
+                    "sku": sku_polo,
+                    "quantity": 2,
+                    "price": 1200.0,
+                }
+            ],
+        }
+        custom_res = await client.post(
+            f"/api/v1/orders/webhook/custom?tenant_id={tenant_id}",
+            json=custom_payload,
+        )
+        assert custom_res.status_code == 201, custom_res.text
+        custom_order = custom_res.json()
+        assert custom_order["external_order_id"] == f"ext_{custom_id}"
+        assert custom_order["source"] == "custom_webhook"
+        assert Decimal(str(custom_order["total_cogs"])) == Decimal("1200.00")  # 2 * 600
+        assert custom_order["payment_method"] == "bkash"
+        assert custom_order["payment_status"] == "paid"
+        print(f"10b. Universal Custom Store Webhook Ingested: Order #{custom_order['order_number']} (Source: {custom_order['source']})")
+        print(f"     -> Matched SKU '{sku_polo}' COGS: BDT {custom_order['total_cogs']} | Net Profit: BDT {custom_order['gross_profit']}")
+
+        # 10c. Test Shopify Webhook Connector
+        shopify_id = f"shp_{uuid.uuid4().hex[:6]}"
+        shopify_payload = {
+            "id": shopify_id,
+            "name": "#1099",
+            "total_price": "1300.00",
+            "total_shipping_price_set": {"shop_money": {"amount": "100.00"}},
+            "total_discounts": "0.00",
+            "financial_status": "pending",
+            "gateway": "Cash on Delivery",
+            "customer": {
+                "first_name": "Tanvir",
+                "last_name": "Ahmed",
+                "email": "tanvir@shopify.com",
+                "phone": "01755443322",
+            },
+            "shipping_address": {
+                "address1": "House 20, Uttara",
+                "city": "Dhaka",
+            },
+            "line_items": [
+                {
+                    "title": "Luxury Silk Cotton Polo",
+                    "sku": sku_polo,
+                    "quantity": 1,
+                    "price": "1200.00",
+                }
+            ],
+        }
+        shopify_res = await client.post(
+            f"/api/v1/orders/webhook/shopify?tenant_id={tenant_id}",
+            json=shopify_payload,
+        )
+        assert shopify_res.status_code == 201, shopify_res.text
+        shp_order = shopify_res.json()
+        assert shp_order["source"] == "shopify"
+        assert Decimal(str(shp_order["total_cogs"])) == Decimal("600.00")
+        print(f"10c. Shopify Webhook Ingested: Order #{shp_order['order_number']} (Source: {shp_order['source']})")
+
+        # 10d. Test 1-Click Platform Test Simulation Endpoint
+        sim_res = await client.post(
+            f"/api/v1/orders/webhook/test-sample?tenant_id={tenant_id}&platform=wix",
+        )
+        assert sim_res.status_code == 201, sim_res.text
+        sim_order = sim_res.json()
+        assert sim_order["source"] == "wix"
+        print(f"10d. 1-Click Platform Simulation Ingested: Order #{sim_order['order_number']} (Source: {sim_order['source']})")
+
         # 11. Test Background COGS Backfill Queue
         backfill_res = await client.post("/api/v1/orders/sync/backfill-cogs", headers=headers)
         assert backfill_res.status_code == 200, backfill_res.text
@@ -270,6 +355,12 @@ async def test_orders_module():
         assert del_res.status_code == 200
         del_wc = await client.delete(f"/api/v1/orders/{wc_order['id']}", headers=headers)
         assert del_wc.status_code == 200
+        del_custom = await client.delete(f"/api/v1/orders/{custom_order['id']}", headers=headers)
+        assert del_custom.status_code == 200
+        del_shp = await client.delete(f"/api/v1/orders/{shp_order['id']}", headers=headers)
+        assert del_shp.status_code == 200
+        del_sim = await client.delete(f"/api/v1/orders/{sim_order['id']}", headers=headers)
+        assert del_sim.status_code == 200
         print(f"12. Test Orders Cleaned Up Successfully (Cascade Verified)")
 
         print("\n" + "=" * 65)

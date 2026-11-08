@@ -59,7 +59,55 @@ WooCommerce-এর সাথে রিয়েল-টাইম অটোমেশ�
 
 ---
 
-### খ. আপনার কোনো ওয়েবসাইট না থাকলে কীভাবে টেস্ট করবেন?
+### খ. Custom Website (Next.js, React, PHP, Laravel, HTML) কানেকশন
+যেকোনো কাস্টম কোডেড ওয়েবসাইটের Checkout বা Order Confirmation হ্যান্ডলারে আমাদের Universal Webhook API-তে একটি HTTP POST রিকোয়েস্ট পাঠান।
+
+#### Universal API Endpoint:
+`POST http://127.0.0.1:8000/api/v1/orders/webhook/custom?tenant_id=YOUR_TENANT_ID`
+
+#### Next.js / React / Node.js স্নিপেট:
+```javascript
+await fetch("http://127.0.0.1:8000/api/v1/orders/webhook/custom?tenant_id=YOUR_TENANT_ID", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({
+    order_id: "ORD-9821",
+    customer_name: "Karim Hasan",
+    customer_phone: "01712345678",
+    customer_email: "karim@example.com",
+    shipping_address: "House 24, Road 7, Dhanmondi",
+    shipping_city: "Dhaka",
+    shipping_fee: 80.00,
+    discount_amount: 0.00,
+    payment_method: "cod",
+    items: [
+      { product_name: "Premium Polo", sku: "POLO-BLK-M", quantity: 1, unit_price: 1200.00 }
+    ],
+    utm_source: "facebook",
+    utm_campaign: "eid_mega_sale"
+  })
+});
+```
+
+---
+
+### গ. Shopify Store কানেকশন
+1. Shopify Admin প্যানেলে প্রবেশ করুন ➔ **Settings** (নিচে বামে) ➔ **Notifications** এ যান।
+2. স্ক্রোল করে নিচে **Webhooks** সেকশনে গিয়ে **Create webhook** বাটনে ক্লিক করুন।
+3. **Event:** নির্বাচন করুন `Order creation`, **Format:** `JSON`।
+4. **URL:** পেস্ট করুন: `http://127.0.0.1:8000/api/v1/orders/webhook/shopify?tenant_id=YOUR_TENANT_ID`
+5. **Save** বাটনে ক্লিক করলেই আপনার Shopify স্টোরের প্রতিটি নতুন অর্ডার সরাসরি চলে আসবে।
+
+---
+
+### ঘ. Wix & Landing Pages কানেকশন
+1. Wix Dashboard ➔ **Automations** ➔ **New Automation** এ যান।
+2. Trigger হিসেবে দিন **Wix Stores: Customer places an order**।
+3. Action হিসেবে **Connect to Webhook** নির্বাচন করে আমাদের Custom Webhook URL পেস্ট করে দিন।
+
+---
+
+### ঙ. আপনার কোনো ওয়েবসাইট না থাকলে কীভাবে টেস্ট করবেন?
 
 বাংলাদেশে বেশিরভাগ উদ্যোক্তা সোশ্যাল মিডিয়া (Facebook Page, WhatsApp, Phone call) এর মাধ্যমে ব্যবসা পরিচালনা করেন। এর জন্য ওয়েবসাইট থাকা বাধ্যতামূলক নয়। আপনি দুটি উপায়ে কাজ করতে পারবেন:
 

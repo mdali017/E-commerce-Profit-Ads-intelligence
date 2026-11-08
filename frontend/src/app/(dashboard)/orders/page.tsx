@@ -169,10 +169,10 @@ export default function OrdersPage() {
         <div className="flex items-center gap-2.5">
           <button
             onClick={() => setIsWooModalOpen(true)}
-            className="px-3.5 py-2 rounded-xl text-xs font-bold border border-purple-200 dark:border-purple-900/60 bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 hover:bg-purple-100 dark:hover:bg-purple-900/50 transition-colors flex items-center gap-1.5"
+            className="px-3.5 py-2 rounded-xl text-xs font-bold border border-purple-200 dark:border-purple-900/60 bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 hover:bg-purple-100 dark:hover:bg-purple-900/50 transition-colors flex items-center gap-1.5 cursor-pointer"
           >
             <Globe className="w-3.5 h-3.5" />
-            WooCommerce Webhook
+            Connect Store / Webhook
           </button>
 
           <button
@@ -320,10 +320,14 @@ export default function OrdersPage() {
         onUpdateStatus={handleUpdateStatusFromDrawer}
       />
 
-      {/* WooCommerce Webhook & Connector Modal (Day 11) */}
+      {/* Store & Webhook Connector Modal */}
       <WooCommerceSettingsModal
         isOpen={isWooModalOpen}
-        onClose={() => setIsWooModalOpen(false)}
+        onClose={() => {
+          setIsWooModalOpen(false);
+          loadData();
+        }}
+        onConnected={() => loadData()}
       />
     </div>
   );

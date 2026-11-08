@@ -23,6 +23,8 @@ class OrderSource(str, Enum):
     MANUAL = "manual"
     WOOCOMMERCE = "woocommerce"
     SHOPIFY = "shopify"
+    WIX = "wix"
+    CUSTOM_WEBHOOK = "custom_webhook"
     LANDING_PAGE = "landing_page"
     API = "api"
     FACEBOOK = "facebook"

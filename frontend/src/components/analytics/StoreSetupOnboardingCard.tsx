@@ -123,7 +123,7 @@ export function StoreSetupOnboardingCard({
                 1. Website / Store
               </h3>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
-                Connect WooCommerce or Shopify to ingest real-time orders, attribution & revenue.
+                Connect WooCommerce, Shopify, or Custom Code (PHP/Next.js/React) to ingest real-time orders, attribution & revenue.
               </p>
             </div>
           </div>
