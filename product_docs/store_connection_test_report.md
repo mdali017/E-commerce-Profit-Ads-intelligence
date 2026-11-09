@@ -44,6 +44,18 @@
 - **description:** Closed the modal and verified that the newly ingested order persisted to Neon PostgreSQL and is displayed in the live Orders table.
 - **expected:** Order appears with correct customer, items, payment method, delivery status, and profit calculation.
 
+### Test Case 6: Real WordPress / WooCommerce Remote Webhook Handshake
+- **issue:** None / Passed
+- **screenshot:** `screenshots/05_woocommerce_webhook_saved_active.jpg`
+- **description:** Configured a real remote cloud WordPress site on TasteWP (`https://rainybean.s6-tastewp.com`) with WooCommerce active. Connected delivery URL `https://smart-ducks-bathe.loca.lt/api/v1/orders/webhook/woocommerce?tenant_id=b77af2b9-3d99-4c76-8869-4249892826e1`. Verified WooCommerce verification ping handshake (`webhook_id=...` form urlencoded & JSON probe).
+- **expected:** Handshake verified immediately with HTTP 200 OK (< 0.02s) and WooCommerce successfully saved webhook with green banner: "Webhook updated successfully."
+
+### Test Case 7: Real Customer Storefront Order Checkout & Live Dashboard Ingestion
+- **issue:** None / Passed
+- **screenshot:** `screenshots/06_live_woocommerce_order_ingested_ui.jpg`
+- **description:** Visited the live store `https://rainybean.s6-tastewp.com/shop/` as an end customer. Added "Cotton T-Shirt" to cart, completed checkout with customer "Mohabbat ali" (Phone: 019999999, City: dhaka, Total: ৳300) with Cash on Delivery (COD). Verified instantaneous webhook ingestion into ProfitPulse.
+- **expected:** Order `ORD-20261109-0005` created with source `WOOCOMMERCE`, ৳300 payable, status PENDING, and instant KPI updates on `http://localhost:3000/orders`.
+
 ---
 
 ## Live Data Log & Edge Cases Verified
@@ -53,8 +65,13 @@
 2. **Catalog COGS Auto-Resolution:**
    - Tested line item matching by SKU (`POLO-7F71`).
    - Automatically matched unit cost (BDT 600.00), packaging cost (BDT 40.00), and handling cost (BDT 15.00), locking gross profit accurately upon arrival.
-3. **CRM Customer Sync:**
+3. **WooCommerce Ping Handshake Resilience:**
+   - Handled raw `application/x-www-form-urlencoded` body `webhook_id=...`, `GET`/`HEAD` probes, and `action.woocommerce_webhook_delivery` topics.
+   - Handshake returns HTTP 200 OK immediately without triggering database query bottlenecks, preventing remote WordPress timeout errors.
+4. **End-to-End Remote Store Validation:**
+   - Verified live remote cloud WordPress store (`rainybean.s6-tastewp.com`) ➔ Localtunnel (`smart-ducks-bathe.loca.lt`) ➔ FastAPI backend ➔ Neon PostgreSQL ➔ Next.js ProfitPulse dashboard. Order `ORD-20261109-0005` was ingested flawlessly.
+5. **CRM Customer Sync:**
    - On order ingestion, the customer profile is automatically created/updated with order frequency, total lifetime spend, and address details.
-4. **Platform Coverage:**
+6. **Platform Coverage:**
    - Fully covers WooCommerce, Custom Code (PHP, Next.js, React, HTML, Python), Shopify, and Wix.
 

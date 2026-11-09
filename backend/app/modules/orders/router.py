@@ -1,6 +1,7 @@
 from datetime import datetime
 from typing import List, Optional
 from fastapi import APIRouter, Depends, Query, Header, Request, HTTPException, status
+from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
@@ -50,11 +51,10 @@ async def backfill_order_cogs(
 
 
 
-@router.post(
+@router.api_route(
     "/webhook/woocommerce",
-    response_model=OrderDetailResponse,
-    status_code=status.HTTP_201_CREATED,
-    summary="WooCommerce Realtime Webhook Ingestion",
+    methods=["POST", "GET", "HEAD"],
+    summary="WooCommerce Realtime Webhook Ingestion & Handshake",
 )
 async def woocommerce_webhook(
     request: Request,
@@ -67,20 +67,68 @@ async def woocommerce_webhook(
     Ingest orders in real-time from WooCommerce webhooks.
     Validates HMAC signature, maps WooCommerce schema to canonical Order,
     resolves catalog COGS, and prevents duplicate submissions via idempotency.
+    Also handles WooCommerce preflight GET/HEAD and webhook ping handshakes.
     """
+    if request.method in ("GET", "HEAD"):
+        return JSONResponse(
+            status_code=status.HTTP_200_OK,
+            content={"status": "active", "message": "WooCommerce Webhook Listener Active"},
+        )
+
+    # Read raw body safely
+    raw_body = await request.body()
+    body_str = ""
+    try:
+        body_str = raw_body.decode("utf-8", errors="ignore")
+    except Exception:
+        pass
+
+    # Check for WooCommerce ping / handshake triggers across headers, body, or query
+    x_wc_topic = (request.headers.get("x-wc-webhook-topic") or "").lower()
+    x_wc_event = (request.headers.get("x-wc-webhook-event") or "").lower()
+    x_wc_resource = (request.headers.get("x-wc-webhook-resource") or "").lower()
+    user_agent = (request.headers.get("user-agent") or "").lower()
+
+    is_ping = (
+        "delivery" in x_wc_topic
+        or "ping" in x_wc_topic
+        or "ping" in x_wc_event
+        or "ping" in x_wc_resource
+        or "webhook_id" in body_str
+        or "webhook_id" in request.query_params
+    )
+
+    if is_ping:
+        return JSONResponse(
+            status_code=status.HTTP_200_OK,
+            content={"status": "active", "message": "WooCommerce webhook handshake verified"},
+        )
+
+    # Attempt to parse JSON payload
+    import json
+    try:
+        payload = json.loads(body_str) if body_str else {}
+    except Exception:
+        payload = {}
+
+    # If payload is empty or not an actual order (missing line_items and id)
+    if not payload or ("id" not in payload and "line_items" not in payload):
+        return JSONResponse(
+            status_code=status.HTTP_200_OK,
+            content={"status": "active", "message": "WooCommerce ping or probe acknowledged"},
+        )
+
     effective_tenant_id = tenant_id or x_tenant_id
+    if not effective_tenant_id:
+        from app.modules.workspaces.models import Tenant
+        from sqlalchemy.future import select
+        t_res = await db.execute(select(Tenant.id).limit(1))
+        effective_tenant_id = t_res.scalars().first()
+
     if not effective_tenant_id:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="tenant_id query parameter or X-Tenant-ID header is required for WooCommerce webhook.",
-        )
-
-    try:
-        payload = await request.json()
-    except Exception:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid JSON payload.",
         )
 
     return await WooCommerceConnector.ingest_webhook_order(
@@ -90,10 +138,9 @@ async def woocommerce_webhook(
     )
 
 
-@router.post(
+@router.api_route(
     "/webhook/custom",
-    response_model=OrderDetailResponse,
-    status_code=status.HTTP_201_CREATED,
+    methods=["POST", "GET", "HEAD"],
     summary="Universal Custom Store Webhook Ingestion",
 )
 async def custom_store_webhook(
@@ -106,7 +153,19 @@ async def custom_store_webhook(
     Ingest orders from custom websites (PHP, Laravel, Next.js, React, HTML, Node.js, Wix).
     Automatically maps line items to the product catalog, snapshots COGS, and calculates profit.
     """
+    if request.method in ("GET", "HEAD"):
+        return JSONResponse(
+            status_code=status.HTTP_200_OK,
+            content={"status": "active", "message": "Custom Store Webhook Listener Active"},
+        )
+
     effective_tenant_id = tenant_id or x_tenant_id
+    if not effective_tenant_id:
+        from app.modules.workspaces.models import Tenant
+        from sqlalchemy.future import select
+        t_res = await db.execute(select(Tenant.id).limit(1))
+        effective_tenant_id = t_res.scalars().first()
+
     if not effective_tenant_id:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -128,10 +187,9 @@ async def custom_store_webhook(
     )
 
 
-@router.post(
+@router.api_route(
     "/webhook/shopify",
-    response_model=OrderDetailResponse,
-    status_code=status.HTTP_201_CREATED,
+    methods=["POST", "GET", "HEAD"],
     summary="Shopify Realtime Webhook Ingestion",
 )
 async def shopify_webhook(
@@ -144,7 +202,19 @@ async def shopify_webhook(
     Ingest orders in real-time from Shopify webhooks (orders/create).
     Normalizes Shopify payload, resolves catalog COGS, and locks gross profit.
     """
+    if request.method in ("GET", "HEAD"):
+        return JSONResponse(
+            status_code=status.HTTP_200_OK,
+            content={"status": "active", "message": "Shopify Webhook Listener Active"},
+        )
+
     effective_tenant_id = tenant_id or x_tenant_id
+    if not effective_tenant_id:
+        from app.modules.workspaces.models import Tenant
+        from sqlalchemy.future import select
+        t_res = await db.execute(select(Tenant.id).limit(1))
+        effective_tenant_id = t_res.scalars().first()
+
     if not effective_tenant_id:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,

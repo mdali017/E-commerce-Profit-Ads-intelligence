@@ -39,6 +39,8 @@ export function StoreConnectionModal({
   const [codeLang, setCodeLang] = useState<CodeLanguage>("javascript");
   const [copiedUrl, setCopiedUrl] = useState(false);
   const [copiedCode, setCopiedCode] = useState(false);
+  const [tunnelUrl, setTunnelUrl] = useState("");
+  const [showTunnelInput, setShowTunnelInput] = useState(false);
   const [sendingTestOrder, setSendingTestOrder] = useState(false);
   const [testOrderResult, setTestOrderResult] = useState<any>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -46,7 +48,10 @@ export function StoreConnectionModal({
   if (!isOpen) return null;
 
   const tenantId = authStorage.getActiveTenantId() || "";
-  const backendBase = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000/api/v1";
+  const defaultBackendBase = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000/api/v1";
+  const backendBase = tunnelUrl.trim()
+    ? `${tunnelUrl.trim().replace(/\/$/, "")}/api/v1`
+    : defaultBackendBase;
 
   // Dedicated Webhook Endpoints
   const endpoints: Record<StorePlatform, string> = {
@@ -96,7 +101,11 @@ export function StoreConnectionModal({
         onConnected();
       }
     } catch (err: any) {
-      setErrorMessage(err.message || "Failed to send test order. Please try again.");
+      if (err.message === "Failed to fetch" || err.name === "TypeError") {
+        setErrorMessage("❌ ব্যাকএন্ড সার্ভার (Port 8000) অফলাইনে আছে। টার্মিনালে uvicorn (Backend) চালু আছে কি না নিশ্চিত করুন।");
+      } else {
+        setErrorMessage(err.message || "Failed to send test order. Please try again.");
+      }
     } finally {
       setSendingTestOrder(false);
     }
@@ -540,6 +549,31 @@ def send_order_to_profitpulse(order_data):
                     </>
                   )}
                 </button>
+              </div>
+
+              {/* Public Tunnel / Live Domain helper for testing online WordPress sites */}
+              <div className="mt-2 pt-2 border-t border-slate-200/60 dark:border-slate-800/80">
+                <button
+                  type="button"
+                  onClick={() => setShowTunnelInput(!showTunnelInput)}
+                  className="text-[11px] font-semibold text-purple-600 dark:text-purple-400 hover:underline flex items-center gap-1 cursor-pointer"
+                >
+                  <span>🌐 অনলাইন/রিয়েল সাইট (TasteWP / Live WordPress) দিয়ে টেস্ট করছেন? পাবলিক টানেল সেট করুন</span>
+                </button>
+                {showTunnelInput && (
+                  <div className="mt-2 p-2.5 rounded-xl bg-purple-50/50 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-900/50 space-y-1.5">
+                    <p className="text-[10px] text-slate-600 dark:text-slate-400">
+                      আপনার ngrok / localtunnel লিংকটি দিন (যেমন: <code className="text-purple-700 dark:text-purple-300 font-mono">https://xyz.ngrok-free.app</code> বা আপনার লাইভ ডোমেন):
+                    </p>
+                    <input
+                      type="url"
+                      placeholder="https://your-ngrok-or-domain.app"
+                      value={tunnelUrl}
+                      onChange={(e) => setTunnelUrl(e.target.value)}
+                      className="w-full text-xs font-mono px-3 py-1.5 rounded-lg bg-white dark:bg-slate-900 border border-purple-300 dark:border-purple-800 text-slate-800 dark:text-slate-200 focus:outline-none"
+                    />
+                  </div>
+                )}
               </div>
             </div>
           </div>

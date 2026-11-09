@@ -65,3 +65,7 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
+
+Project_node.md
+Project_note.md
+*.note.md
