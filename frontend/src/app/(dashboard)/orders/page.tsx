@@ -43,11 +43,13 @@ export default function OrdersPage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [kpis, setKpis] = useState<OrderKPIStats | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // Filters state
   const [selectedStatus, setSelectedStatus] = useState("all");
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [sourceFilter, setSourceFilter] = useState("all");
 
   // Modals & Drawers state
@@ -56,16 +58,25 @@ export default function OrdersPage() {
   const [selectedOrderDetail, setSelectedOrderDetail] = useState<OrderDetail | null>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
 
-  // Load Data
-  const loadData = useCallback(async () => {
-    setLoading(true);
+  // Debounce search input to eliminate typing lag
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(search);
+    }, 250);
+    return () => clearTimeout(timer);
+  }, [search]);
+
+  // Load Data with Silent Background Revalidation
+  const loadData = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true);
+    setIsRefreshing(true);
     setError(null);
     try {
       const [ordersData, kpisData] = await Promise.all([
         ordersApi.getOrders({
           status: selectedStatus !== "all" ? selectedStatus : undefined,
           source: sourceFilter !== "all" ? sourceFilter : undefined,
-          search: search.trim() || undefined,
+          search: debouncedSearch.trim() || undefined,
         }),
         ordersApi.getOrderKPIs(),
       ]);
@@ -80,11 +91,31 @@ export default function OrdersPage() {
       );
     } finally {
       setLoading(false);
+      setIsRefreshing(false);
     }
-  }, [selectedStatus, sourceFilter, search]);
+  }, [selectedStatus, sourceFilter, debouncedSearch]);
 
+  // Initial and reactive load (avoids wiping table to skeleton when data is already present)
   useEffect(() => {
-    loadData();
+    const isSilent = orders.length > 0;
+    loadData(isSilent);
+  }, [loadData]);
+
+  // Auto-Sync Polling: Check for incoming webhooks every 10 seconds silently
+  useEffect(() => {
+    const interval = setInterval(() => {
+      loadData(true);
+    }, 10000);
+    return () => clearInterval(interval);
+  }, [loadData]);
+
+  // Handle Workspace Switch
+  useEffect(() => {
+    const handleTenantChanged = () => {
+      loadData(false);
+    };
+    window.addEventListener("tenantChanged", handleTenantChanged);
+    return () => window.removeEventListener("tenantChanged", handleTenantChanged);
   }, [loadData]);
 
   // Handle Manual Order Submission
@@ -166,7 +197,26 @@ export default function OrdersPage() {
           </p>
         </div>
 
-        <div className="flex items-center gap-2.5">
+        <div className="flex flex-wrap items-center gap-2.5">
+          {/* Realtime Live Pulse */}
+          <div className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/60 text-[11px] font-medium text-slate-600 dark:text-slate-300">
+            <span className={`w-2 h-2 rounded-full ${isRefreshing ? "bg-purple-500 animate-ping" : "bg-emerald-500 animate-pulse"}`} />
+            <span>{isRefreshing ? "Syncing..." : "Realtime Active"}</span>
+          </div>
+
+          {/* Store Connection Status Pill */}
+          {kpis && kpis.total_orders > 0 ? (
+            <div className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/60 text-[11px] font-bold text-emerald-700 dark:text-emerald-300">
+              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
+              <span>Store Connected</span>
+            </div>
+          ) : (
+            <div className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 text-[11px] font-semibold text-amber-700 dark:text-amber-300">
+              <span className="w-2 h-2 rounded-full bg-amber-500" />
+              <span>Awaiting Orders</span>
+            </div>
+          )}
+
           <button
             onClick={() => setIsWooModalOpen(true)}
             className="px-3.5 py-2 rounded-xl text-xs font-bold border border-purple-200 dark:border-purple-900/60 bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 hover:bg-purple-100 dark:hover:bg-purple-900/50 transition-colors flex items-center gap-1.5 cursor-pointer"
@@ -176,11 +226,11 @@ export default function OrdersPage() {
           </button>
 
           <button
-            onClick={() => loadData()}
+            onClick={() => loadData(false)}
             className="p-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
             title="Refresh Orders"
           >
-            <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
+            <RefreshCw className={`w-4 h-4 ${isRefreshing ? "animate-spin text-purple-600" : ""}`} />
           </button>
 
           <button
@@ -222,18 +272,7 @@ export default function OrdersPage() {
             if (tab.id === "cancelled") count = kpis.cancelled_orders;
           }
 
-          // Dispatch to Courier (Unit 4 integration)
-  const handleDispatchOrder = async (orderId: string) => {
-    try {
-      await couriersApi.dispatchOrder({ order_id: orderId });
-      await loadData();
-    } catch (err: any) {
-      alert(err?.message || "Failed to dispatch order to courier.");
-    }
-  };
-
-  return (
-
+          return (
             <button
               key={tab.id}
               onClick={() => setSelectedStatus(tab.id)}
@@ -293,7 +332,7 @@ export default function OrdersPage() {
       {/* Orders Table */}
       <OrderTable
         orders={orders}
-        loading={loading}
+        loading={loading && orders.length === 0}
         onViewOrder={handleViewOrder}
         onQuickConfirm={handleQuickConfirm}
         onQuickCancel={handleQuickCancel}

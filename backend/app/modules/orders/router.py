@@ -208,6 +208,21 @@ async def shopify_webhook(
             content={"status": "active", "message": "Shopify Webhook Listener Active"},
         )
 
+    # Read body safely
+    raw_body = await request.body()
+    import json
+    try:
+        payload = json.loads(raw_body.decode("utf-8")) if raw_body else {}
+    except Exception:
+        payload = {}
+
+    # Initial probe / ping acknowledgment
+    if not payload or ("id" not in payload and "line_items" not in payload):
+        return JSONResponse(
+            status_code=status.HTTP_200_OK,
+            content={"status": "active", "message": "Shopify webhook probe verified"},
+        )
+
     effective_tenant_id = tenant_id or x_tenant_id
     if not effective_tenant_id:
         from app.modules.workspaces.models import Tenant
@@ -219,14 +234,6 @@ async def shopify_webhook(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="tenant_id query parameter or X-Tenant-ID header is required for Shopify webhook.",
-        )
-
-    try:
-        payload = await request.json()
-    except Exception:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid JSON payload.",
         )
 
     return await ShopifyConnector.ingest_webhook_order(

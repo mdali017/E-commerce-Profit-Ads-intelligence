@@ -33,6 +33,7 @@ export default function OverviewPage() {
   const [data, setData] = useState<ExecutiveOverviewResponse | null>(null);
   const [briefing, setBriefing] = useState<AIBriefing | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isGeneratingBriefing, setIsGeneratingBriefing] = useState(false);
 
@@ -42,8 +43,9 @@ export default function OverviewPage() {
   const [isCourierModalOpen, setIsCourierModalOpen] = useState(false);
   const [isProductModalOpen, setIsProductModalOpen] = useState(false);
 
-  const loadData = async (range: string = dateRange) => {
-    setLoading(true);
+  const loadData = async (range: string = dateRange, silent = false) => {
+    if (!silent && !data) setLoading(true);
+    setIsRefreshing(true);
     setError(null);
     try {
       const [overviewRes, latestBriefing] = await Promise.all([
@@ -61,6 +63,7 @@ export default function OverviewPage() {
       setError(err?.message || "Failed to connect to backend server.");
     } finally {
       setLoading(false);
+      setIsRefreshing(false);
     }
   };
 
@@ -90,16 +93,25 @@ export default function OverviewPage() {
   };
 
   useEffect(() => {
-    loadData(dateRange);
+    const isSilent = !!data;
+    loadData(dateRange, isSilent);
 
     const handleTenantChanged = () => {
-      loadData(dateRange);
+      loadData(dateRange, false);
     };
 
     window.addEventListener("tenantChanged", handleTenantChanged);
     return () => {
       window.removeEventListener("tenantChanged", handleTenantChanged);
     };
+  }, [dateRange]);
+
+  // Realtime Polling for Overview: Sync every 15 seconds silently
+  useEffect(() => {
+    const interval = setInterval(() => {
+      loadData(dateRange, true);
+    }, 15000);
+    return () => clearInterval(interval);
   }, [dateRange]);
 
   const dateRangeOptions = [
@@ -148,11 +160,11 @@ export default function OverviewPage() {
           </div>
 
           <button
-            onClick={() => loadData(dateRange)}
+            onClick={() => loadData(dateRange, false)}
             className="p-2 text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors shadow-xs"
             title="Refresh Metrics"
           >
-            <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
+            <RefreshCw className={`w-4 h-4 ${isRefreshing ? "animate-spin text-purple-600" : ""}`} />
           </button>
         </div>
       </div>

@@ -6,7 +6,7 @@ from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from sqlalchemy.orm import selectinload
-from sqlalchemy import func, or_, desc
+from sqlalchemy import func, or_, desc, case
 
 from app.modules.orders.models import (
     Order,
@@ -448,46 +448,37 @@ class OrderService:
 
     @staticmethod
     async def get_order_kpis(db: AsyncSession, tenant_id: str) -> OrderKPIStats:
-        """Calculate executive order metrics and status breakdown."""
-        # 1. Total orders
-        total_res = await db.execute(
-            select(func.count(Order.id)).where(Order.tenant_id == tenant_id)
-        )
-        total_orders = total_res.scalar() or 0
+        """Calculate executive order metrics and status breakdown via a single consolidated SQL aggregation."""
+        stmt = select(
+            func.count(Order.id).label("total_orders"),
+            func.sum(case((Order.status == OrderStatus.PENDING.value, 1), else_=0)).label("pending"),
+            func.sum(case((Order.status == OrderStatus.CONFIRMED.value, 1), else_=0)).label("confirmed"),
+            func.sum(case((Order.status == OrderStatus.PROCESSING.value, 1), else_=0)).label("processing"),
+            func.sum(case((Order.status == OrderStatus.IN_COURIER.value, 1), else_=0)).label("in_courier"),
+            func.sum(case((Order.status == OrderStatus.DELIVERED.value, 1), else_=0)).label("delivered"),
+            func.sum(case((Order.status == OrderStatus.CANCELLED.value, 1), else_=0)).label("cancelled"),
+            func.sum(case((Order.status == OrderStatus.RETURNED.value, 1), else_=0)).label("returned"),
+            func.sum(case((Order.status != OrderStatus.CANCELLED.value, Order.total_amount), else_=Decimal("0.00"))).label("revenue"),
+            func.sum(case((Order.status != OrderStatus.CANCELLED.value, Order.total_cogs), else_=Decimal("0.00"))).label("cogs"),
+            func.sum(case((Order.status != OrderStatus.CANCELLED.value, Order.gross_profit), else_=Decimal("0.00"))).label("profit"),
+        ).where(Order.tenant_id == tenant_id)
 
-        # 2. Status counts
-        status_counts_res = await db.execute(
-            select(Order.status, func.count(Order.id))
-            .where(Order.tenant_id == tenant_id)
-            .group_by(Order.status)
-        )
-        status_map = {row[0]: row[1] for row in status_counts_res.all()}
+        res = await db.execute(stmt)
+        row = res.first()
 
-        pending = status_map.get(OrderStatus.PENDING.value, 0)
-        confirmed = status_map.get(OrderStatus.CONFIRMED.value, 0)
-        processing = status_map.get(OrderStatus.PROCESSING.value, 0)
-        in_courier = status_map.get(OrderStatus.IN_COURIER.value, 0)
-        delivered = status_map.get(OrderStatus.DELIVERED.value, 0)
-        cancelled = status_map.get(OrderStatus.CANCELLED.value, 0)
-        returned = status_map.get(OrderStatus.RETURNED.value, 0)
+        total_orders = int(row.total_orders or 0)
+        pending = int(row.pending or 0)
+        confirmed = int(row.confirmed or 0)
+        processing = int(row.processing or 0)
+        in_courier = int(row.in_courier or 0)
+        delivered = int(row.delivered or 0)
+        cancelled = int(row.cancelled or 0)
+        returned = int(row.returned or 0)
+        total_revenue = row.revenue or Decimal("0.00")
+        total_cogs = row.cogs or Decimal("0.00")
+        total_profit = row.profit or Decimal("0.00")
 
-        # 3. Revenue, COGS, and Gross Profit aggregates
-        financial_res = await db.execute(
-            select(
-                func.sum(Order.total_amount),
-                func.sum(Order.total_cogs),
-                func.sum(Order.gross_profit),
-            ).where(
-                Order.tenant_id == tenant_id,
-                Order.status != OrderStatus.CANCELLED.value,
-            )
-        )
-        f_row = financial_res.first()
-        total_revenue = f_row[0] or Decimal("0.00")
-        total_cogs = f_row[1] or Decimal("0.00")
-        total_profit = f_row[2] or Decimal("0.00")
-
-        # 4. AOV and Delivery/Return Rates
+        # AOV and Delivery/Return Rates
         non_cancelled_orders = total_orders - cancelled
         aov = (
             round(total_revenue / Decimal(str(non_cancelled_orders)), 2)

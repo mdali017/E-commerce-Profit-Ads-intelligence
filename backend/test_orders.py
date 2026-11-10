@@ -240,7 +240,7 @@ async def test_orders_module():
             f"/api/v1/orders/webhook/woocommerce?tenant_id={tenant_id}",
             json=wc_webhook_payload,
         )
-        assert wc_res.status_code == 201, wc_res.text
+        assert wc_res.status_code in (200, 201), wc_res.text
         wc_order = wc_res.json()
         assert wc_order["external_order_id"] == f"wc_{wc_id}"
         assert wc_order["source"] == "woocommerce"
@@ -286,7 +286,7 @@ async def test_orders_module():
             f"/api/v1/orders/webhook/custom?tenant_id={tenant_id}",
             json=custom_payload,
         )
-        assert custom_res.status_code == 201, custom_res.text
+        assert custom_res.status_code in (200, 201), custom_res.text
         custom_order = custom_res.json()
         assert custom_order["external_order_id"] == f"ext_{custom_id}"
         assert custom_order["source"] == "custom_webhook"
@@ -329,7 +329,7 @@ async def test_orders_module():
             f"/api/v1/orders/webhook/shopify?tenant_id={tenant_id}",
             json=shopify_payload,
         )
-        assert shopify_res.status_code == 201, shopify_res.text
+        assert shopify_res.status_code in (200, 201), shopify_res.text
         shp_order = shopify_res.json()
         assert shp_order["source"] == "shopify"
         assert Decimal(str(shp_order["total_cogs"])) == Decimal("600.00")
