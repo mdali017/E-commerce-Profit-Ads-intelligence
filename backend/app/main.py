@@ -1,4 +1,5 @@
-from contextlib import asynccontextmanager
+import asyncio
+from contextlib import asynccontextmanager, suppress
 from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
@@ -6,6 +7,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.core.database import engine, Base, get_db
+from app.modules.couriers.migrations import ensure_courier_schema
+from app.modules.couriers.tasks import courier_background_sync_loop
 
 # Import all module models so Base.metadata knows about them
 import app.modules.auth.models  # noqa: F401
@@ -34,12 +37,21 @@ from app.modules.analytics.router import router as analytics_router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Startup: create tables if they don't exist
+    # Startup: create tables if they don't exist and apply incremental schema upgrades
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
-    yield
-    # Shutdown
-    await engine.dispose()
+    await ensure_courier_schema(engine)
+
+    # Start periodic eCourier polling & Pathao token refresh loop
+    sync_task = asyncio.create_task(courier_background_sync_loop())
+    try:
+        yield
+    finally:
+        sync_task.cancel()
+        with suppress(asyncio.CancelledError):
+            await sync_task
+        # Shutdown
+        await engine.dispose()
 
 
 app = FastAPI(

@@ -333,9 +333,10 @@ export interface OrderKPIStats {
 }
 
 // ==========================================
+// ==========================================
 // Courier & Shipment Types
 // ==========================================
-export type CourierProvider = "steadfast" | "pathao" | "redx" | "paperfly" | "custom";
+export type CourierProvider = "steadfast" | "pathao" | "ecourier" | "redx" | "paperfly" | "custom";
 
 export type ShipmentStatus =
   | "pending"
@@ -355,6 +356,14 @@ export interface CourierCredential {
   secret_key?: string | null;
   store_id?: string | null;
   webhook_secret?: string | null;
+  user_id?: string | null;
+  client_id?: string | null;
+  username?: string | null;
+  is_sandbox?: boolean;
+  has_secret?: boolean;
+  has_password?: boolean;
+  has_valid_token?: boolean;
+  token_expires_at?: string | null;
   is_active: boolean;
   is_default: boolean;
   created_at: string;
@@ -367,15 +376,44 @@ export interface CourierCredentialCreateInput {
   secret_key?: string;
   store_id?: string;
   webhook_secret?: string;
+  user_id?: string;
+  client_id?: string;
+  client_secret?: string;
+  username?: string;
+  password?: string;
+  is_sandbox?: boolean;
   is_active?: boolean;
   is_default?: boolean;
+}
+
+export interface CourierTestConnectionInput {
+  provider: CourierProvider;
+  api_key?: string;
+  secret_key?: string;
+  store_id?: string;
+  user_id?: string;
+  client_id?: string;
+  client_secret?: string;
+  username?: string;
+  password?: string;
+  is_sandbox?: boolean;
+}
+
+export interface CourierTestConnectionResult {
+  success: boolean;
+  provider: CourierProvider;
+  mode: string;
+  message: string;
+  details: Record<string, any>;
 }
 
 export interface CourierTrackingEvent {
   id: string;
   event_status: string;
+  raw_status?: string | null;
   message: string;
   location?: string | null;
+  source?: string;
   timestamp: string;
 }
 
@@ -393,6 +431,14 @@ export interface CourierShipment {
   recipient_phone: string;
   recipient_address: string;
   recipient_city?: string | null;
+  recipient_zone?: string | null;
+  recipient_area?: string | null;
+  recipient_postcode?: string | null;
+  city_id?: number | null;
+  zone_id?: number | null;
+  area_id?: number | null;
+  item_weight?: number;
+  delivery_type?: number;
   cod_amount: number;
   collected_amount: number;
   delivery_fee: number;
@@ -400,7 +446,13 @@ export interface CourierShipment {
   return_fee: number;
   is_settled: boolean;
   settled_at?: string | null;
+  settlement_id?: string | null;
   delivery_date?: string | null;
+  estimated_delivery_date?: string | null;
+  last_polled_at?: string | null;
+  hub_name?: string | null;
+  rider_name?: string | null;
+  rider_phone?: string | null;
   notes?: string | null;
   created_at: string;
   updated_at: string;
@@ -412,6 +464,108 @@ export interface BookShipmentRequestInput {
   provider?: CourierProvider;
   custom_cod_amount?: number;
   notes?: string;
+  recipient_city?: string;
+  recipient_zone?: string;
+  recipient_area?: string;
+  recipient_postcode?: string;
+  city_id?: number;
+  zone_id?: number;
+  area_id?: number;
+  item_weight?: number;
+  delivery_type?: number;
+  package_code?: string;
+  payment_method?: string;
+  store_id?: string;
+}
+
+export interface BulkDispatchRequestInput {
+  order_ids: string[];
+  provider: CourierProvider;
+  notes?: string;
+  delivery_type?: number;
+  item_weight?: number;
+}
+
+export interface BulkDispatchItemResult {
+  order_id: string;
+  order_number?: string | null;
+  success: boolean;
+  consignment_id?: string | null;
+  tracking_code?: string | null;
+  shipment_id?: string | null;
+  error?: string | null;
+}
+
+export interface BulkDispatchResponse {
+  provider: CourierProvider;
+  total_requested: number;
+  succeeded_count: number;
+  failed_count: number;
+  results: BulkDispatchItemResult[];
+}
+
+export interface FraudCheckResult {
+  phone: string;
+  total_parcels: number;
+  total_delivered: number;
+  total_cancelled: number;
+  fraud_reports: number;
+  success_rate: number;
+  risk_level: "low" | "medium" | "high" | "no_history";
+  internal_total_orders: number;
+  internal_delivered_orders: number;
+  internal_returned_orders: number;
+  source: string;
+  summary: string;
+}
+
+export interface SteadfastBalance {
+  provider: string;
+  current_balance: number;
+  currency: string;
+  mode: string;
+}
+
+export interface PathaoStore {
+  store_id: number;
+  store_name: string;
+  store_address?: string;
+  is_active?: number;
+}
+
+export interface PathaoCity {
+  city_id: number;
+  city_name: string;
+}
+
+export interface PathaoZone {
+  zone_id: number;
+  zone_name: string;
+}
+
+export interface PathaoArea {
+  area_id: number;
+  area_name: string;
+}
+
+export interface PathaoPriceEstimate {
+  price: number;
+  discount: number;
+  promo_discount: number;
+  final_price: number;
+  cod_enabled: boolean;
+  mode: string;
+}
+
+export interface ECourierLocationItem {
+  name: string;
+  code?: string;
+}
+
+export interface ECourierPackage {
+  package_code: string;
+  package_name: string;
+  shipping_charge: number;
 }
 
 export interface CourierKPIStats {
@@ -428,6 +582,102 @@ export interface CourierKPIStats {
   total_delivery_fees: number;
   total_courier_charges: number;
   unsettled_balance: number;
+  avg_delivery_hours?: number | null;
+}
+
+export interface ProviderPerformanceItem {
+  provider: CourierProvider;
+  total_shipments: number;
+  booked_count: number;
+  in_transit_count: number;
+  delivered_count: number;
+  returned_count: number;
+  cancelled_count: number;
+  delivery_rate: number;
+  return_rate: number;
+  total_cod: number;
+  total_collected: number;
+  total_fees: number;
+  avg_delivery_fee: number;
+  avg_delivery_hours?: number | null;
+}
+
+export interface DailyCourierTrendPoint {
+  date: string;
+  booked: number;
+  delivered: number;
+  returned: number;
+  cod_collected: number;
+}
+
+export interface DeliveryPerformanceAnalytics {
+  days: number;
+  overall_delivery_rate: number;
+  overall_return_rate: number;
+  avg_delivery_hours?: number | null;
+  providers: ProviderPerformanceItem[];
+  daily_trend: DailyCourierTrendPoint[];
+}
+
+export interface ProviderCostBreakdown {
+  provider: CourierProvider;
+  shipment_count: number;
+  delivery_fees: number;
+  cod_fees: number;
+  return_fees: number;
+  total_cost: number;
+  avg_cost_per_shipment: number;
+  cost_to_collected_ratio: number;
+}
+
+export interface CostAnalysisResponse {
+  days: number;
+  total_delivery_fees: number;
+  total_cod_fees: number;
+  total_return_fees: number;
+  total_courier_cost: number;
+  by_provider: ProviderCostBreakdown[];
+}
+
+export interface CityPerformanceItem {
+  city: string;
+  total_shipments: number;
+  delivered_count: number;
+  returned_count: number;
+  delivery_rate: number;
+  return_rate: number;
+  avg_delivery_fee: number;
+}
+
+export interface CourierSettlement {
+  id: string;
+  tenant_id: string;
+  provider: CourierProvider;
+  settlement_number: string;
+  total_collected_amount: number;
+  total_delivery_fees: number;
+  total_cod_fees: number;
+  net_payout_amount: number;
+  shipment_count: number;
+  payout_date: string;
+  status: string;
+  reference_number?: string | null;
+  bank_account?: string | null;
+  notes?: string | null;
+  created_at: string;
+  updated_at: string;
+  shipments?: CourierShipment[];
+}
+
+export interface CourierSettlementCreateInput {
+  provider: CourierProvider;
+  settlement_number: string;
+  shipment_ids: string[];
+  payout_date?: string;
+  status?: string;
+  reference_number?: string;
+  bank_account?: string;
+  notes?: string;
 }
 
 // ==========================================

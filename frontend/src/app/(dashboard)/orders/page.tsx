@@ -9,13 +9,13 @@ import {
   OrderStatus,
 } from "@/types";
 import { ordersApi } from "@/lib/orders";
-import { couriersApi } from "@/lib/couriers";
 import { OrderStats } from "@/components/orders/OrderStats";
 
 import { OrderTable } from "@/components/orders/OrderTable";
 import { ManualOrderModal } from "@/components/orders/ManualOrderModal";
 import { OrderDetailDrawer } from "@/components/orders/OrderDetailDrawer";
 import { WooCommerceSettingsModal } from "@/components/orders/WooCommerceSettingsModal";
+import { DispatchOrderModal } from "@/components/couriers/DispatchOrderModal";
 import {
   Plus,
   RefreshCw,
@@ -28,6 +28,7 @@ import {
   Truck,
   XCircle,
   AlertCircle,
+  Send,
 } from "lucide-react";
 
 const STATUS_TABS = [
@@ -57,6 +58,9 @@ export default function OrdersPage() {
   const [isWooModalOpen, setIsWooModalOpen] = useState(false);
   const [selectedOrderDetail, setSelectedOrderDetail] = useState<OrderDetail | null>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
+  const [dispatchOrders, setDispatchOrders] = useState<Order[]>([]);
+  const [isDispatchModalOpen, setIsDispatchModalOpen] = useState(false);
+  const [selectedOrderIds, setSelectedOrderIds] = useState<string[]>([]);
 
   // Debounce search input to eliminate typing lag
   useEffect(() => {
@@ -172,14 +176,38 @@ export default function OrdersPage() {
     await loadData();
   };
 
-  // Dispatch to Courier (Unit 4 integration)
-  const handleDispatchOrder = async (orderId: string) => {
-    try {
-      await couriersApi.dispatchOrder({ order_id: orderId });
-      await loadData();
-    } catch (err: any) {
-      alert(err?.message || "Failed to dispatch order to courier.");
+  // Dispatch to Courier Modal handlers (Steadfast, Pathao, eCourier)
+  const handleDispatchOrder = (orderId: string) => {
+    const target = orders.find((o) => o.id === orderId);
+    if (!target) return;
+    setDispatchOrders([target]);
+    setIsDispatchModalOpen(true);
+  };
+
+  const handleToggleSelectOrder = (orderId: string) => {
+    setSelectedOrderIds((prev) =>
+      prev.includes(orderId) ? prev.filter((id) => id !== orderId) : [...prev, orderId]
+    );
+  };
+
+  const handleToggleSelectAll = () => {
+    const confirmedIds = orders.filter((o) => o.status === "confirmed").map((o) => o.id);
+    const allSelected =
+      confirmedIds.length > 0 && confirmedIds.every((id) => selectedOrderIds.includes(id));
+    if (allSelected) {
+      setSelectedOrderIds((prev) => prev.filter((id) => !confirmedIds.includes(id)));
+    } else {
+      setSelectedOrderIds(confirmedIds);
     }
+  };
+
+  const handleBulkDispatchOpen = () => {
+    const chosen = orders.filter(
+      (o) => selectedOrderIds.includes(o.id) && o.status === "confirmed"
+    );
+    if (chosen.length === 0) return;
+    setDispatchOrders(chosen);
+    setIsDispatchModalOpen(true);
   };
 
   return (
@@ -329,6 +357,33 @@ export default function OrdersPage() {
         </div>
       </div>
 
+      {/* Bulk Dispatch Selection Action Bar */}
+      {selectedOrderIds.length > 0 && (
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-4 py-3 rounded-2xl bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-500/30">
+          <div className="flex items-center gap-2 text-xs font-semibold text-indigo-900 dark:text-indigo-200">
+            <Truck className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+            <span>{selectedOrderIds.length} confirmed order(s) selected for courier dispatch</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setSelectedOrderIds([])}
+              className="px-3 py-1.5 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-800 transition-colors"
+            >
+              Clear
+            </button>
+            <button
+              type="button"
+              onClick={handleBulkDispatchOpen}
+              className="px-4 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold inline-flex items-center gap-1.5 shadow-xs transition-colors"
+            >
+              <Send className="w-3.5 h-3.5" />
+              Bulk Dispatch Selected ({selectedOrderIds.length})
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Orders Table */}
       <OrderTable
         orders={orders}
@@ -338,6 +393,9 @@ export default function OrdersPage() {
         onQuickCancel={handleQuickCancel}
         onDeleteOrder={handleDeleteOrder}
         onDispatchOrder={handleDispatchOrder}
+        selectedOrderIds={selectedOrderIds}
+        onToggleSelectOrder={handleToggleSelectOrder}
+        onToggleSelectAll={handleToggleSelectAll}
       />
 
 
@@ -357,6 +415,24 @@ export default function OrdersPage() {
           setSelectedOrderDetail(null);
         }}
         onUpdateStatus={handleUpdateStatusFromDrawer}
+        onOpenDispatch={(detail) => {
+          setDispatchOrders([detail]);
+          setIsDispatchModalOpen(true);
+        }}
+      />
+
+      {/* Courier Single / Bulk Dispatch Modal */}
+      <DispatchOrderModal
+        isOpen={isDispatchModalOpen}
+        orders={dispatchOrders}
+        onClose={() => {
+          setIsDispatchModalOpen(false);
+          setDispatchOrders([]);
+        }}
+        onDispatched={() => {
+          setSelectedOrderIds([]);
+          loadData();
+        }}
       />
 
       {/* Store & Webhook Connector Modal */}

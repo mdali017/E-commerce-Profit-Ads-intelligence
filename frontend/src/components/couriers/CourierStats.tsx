@@ -1,14 +1,14 @@
 "use client";
 
+import Link from "next/link";
 import { CourierKPIStats } from "@/types";
 import {
   Truck,
-  CheckCircle2,
-  Clock,
-  RotateCcw,
   DollarSign,
   TrendingUp,
   Percent,
+  Clock,
+  ArrowUpRight,
 } from "lucide-react";
 
 interface CourierStatsProps {
@@ -44,7 +44,7 @@ export function CourierStats({
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-      {/* 1. Total Dispatched & In-Transit */}
+      {/* 1. In-Transit & Dispatched */}
       <div
         onClick={() => onSelectStatus("in_transit")}
         className={`cursor-pointer transition-all bg-white dark:bg-slate-900 border rounded-2xl p-5 shadow-xs hover:border-indigo-500/50 ${
@@ -55,7 +55,7 @@ export function CourierStats({
       >
         <div className="flex items-center justify-between">
           <span className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-            In Transit / On Delivery
+            In Transit / Active
           </span>
           <div className="w-9 h-9 rounded-xl bg-indigo-50 dark:bg-indigo-950/50 flex items-center justify-center text-indigo-600 dark:text-indigo-400">
             <Truck className="w-5 h-5" />
@@ -71,11 +71,13 @@ export function CourierStats({
         </div>
         <div className="mt-2 text-xs text-slate-500 dark:text-slate-400 flex justify-between">
           <span>Booked: {stats.booked_count}</span>
-          <span className="text-indigo-600 dark:text-indigo-400 font-medium">Click to view active</span>
+          <span className="text-indigo-600 dark:text-indigo-400 font-medium">
+            View active
+          </span>
         </div>
       </div>
 
-      {/* 2. Delivery Success Rate */}
+      {/* 2. Delivery Success Rate & Speed */}
       <div
         onClick={() => onSelectStatus("delivered")}
         className={`cursor-pointer transition-all bg-white dark:bg-slate-900 border rounded-2xl p-5 shadow-xs hover:border-emerald-500/50 ${
@@ -100,12 +102,20 @@ export function CourierStats({
             {stats.delivered_count} delivered
           </span>
         </div>
-        <div className="mt-2 text-xs text-slate-500 dark:text-slate-400">
-          Return rate: {stats.return_rate}% ({stats.returned_count} returned)
+        <div className="mt-2 text-xs text-slate-500 dark:text-slate-400 flex items-center justify-between">
+          <span>
+            Return: {stats.return_rate}% ({stats.returned_count})
+          </span>
+          {stats.avg_delivery_hours !== null && stats.avg_delivery_hours !== undefined && (
+            <span className="flex items-center gap-0.5 text-[11px] font-semibold text-slate-600 dark:text-slate-300">
+              <Clock className="w-3 h-3" />
+              {stats.avg_delivery_hours}h avg
+            </span>
+          )}
         </div>
       </div>
 
-      {/* 3. Collected Cash & COD Status */}
+      {/* 3. Collected Cash & Courier Charges */}
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-xs">
         <div className="flex items-center justify-between">
           <span className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
@@ -129,7 +139,10 @@ export function CourierStats({
       </div>
 
       {/* 4. Unsettled Payout Balance */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-xs">
+      <Link
+        href="/couriers/settlements"
+        className="block bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-amber-500/50 rounded-2xl p-5 shadow-xs transition-all group"
+      >
         <div className="flex items-center justify-between">
           <span className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
             Unsettled Courier Cash
@@ -142,15 +155,14 @@ export function CourierStats({
           <span className="text-2xl font-bold text-amber-600 dark:text-amber-400">
             {formatCurrency(stats.unsettled_balance)}
           </span>
-          <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
-            Pending Bank Payout
+          <span className="text-xs font-semibold text-amber-700 dark:text-amber-400 flex items-center gap-0.5 group-hover:underline">
+            Reconcile <ArrowUpRight className="w-3.5 h-3.5" />
           </span>
         </div>
         <div className="mt-2 text-xs text-slate-500 dark:text-slate-400">
-          Cash in courier hands awaiting remittance
+          Delivered COD cash awaiting settlement
         </div>
-      </div>
+      </Link>
     </div>
   );
 }
-

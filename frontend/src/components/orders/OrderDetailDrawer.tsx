@@ -1,13 +1,18 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import Link from "next/link";
 import {
   OrderDetail,
   OrderStatus,
   OrderSource,
   PaymentMethod,
   PaymentStatus,
+  CourierShipment,
 } from "@/types";
+import { couriersApi } from "@/lib/couriers";
+import { FraudCheckBadge } from "@/components/couriers/FraudCheckBadge";
+import { TrackingTimeline } from "@/components/couriers/TrackingTimeline";
 import {
   X,
   Phone,
@@ -24,6 +29,10 @@ import {
   ShieldCheck,
   History,
   MessageSquare,
+  Send,
+  Copy,
+  Check,
+  RefreshCw,
 } from "lucide-react";
 
 interface OrderDetailDrawerProps {
@@ -31,6 +40,7 @@ interface OrderDetailDrawerProps {
   isOpen: boolean;
   onClose: () => void;
   onUpdateStatus: (orderId: string, status: OrderStatus, reason: string) => Promise<void>;
+  onOpenDispatch?: (order: OrderDetail) => void;
 }
 
 export function OrderDetailDrawer({
@@ -38,12 +48,59 @@ export function OrderDetailDrawer({
   isOpen,
   onClose,
   onUpdateStatus,
+  onOpenDispatch,
 }: OrderDetailDrawerProps) {
   const [updating, setUpdating] = useState(false);
   const [actionReason, setActionReason] = useState("");
   const [selectedNewStatus, setSelectedNewStatus] = useState<OrderStatus | "">("");
+  const [shipment, setShipment] = useState<CourierShipment | null>(null);
+  const [shipmentLoading, setShipmentLoading] = useState(false);
+  const [syncingShipment, setSyncingShipment] = useState(false);
+  const [copiedTracking, setCopiedTracking] = useState(false);
+
+  useEffect(() => {
+    if (!isOpen || !order?.id) {
+      setShipment(null);
+      return;
+    }
+    let cancelled = false;
+    setShipmentLoading(true);
+    couriersApi
+      .getShipmentByOrder(order.id)
+      .then((res) => {
+        if (!cancelled) setShipment(res);
+      })
+      .catch(() => {
+        if (!cancelled) setShipment(null);
+      })
+      .finally(() => {
+        if (!cancelled) setShipmentLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [isOpen, order?.id]);
 
   if (!isOpen || !order) return null;
+
+  const handleSyncShipment = async () => {
+    if (!shipment) return;
+    setSyncingShipment(true);
+    try {
+      const updated = await couriersApi.syncShipmentStatus(shipment.id);
+      setShipment(updated);
+    } catch {
+      // ignore sync error
+    } finally {
+      setSyncingShipment(false);
+    }
+  };
+
+  const handleCopyTracking = (value: string) => {
+    navigator.clipboard.writeText(value);
+    setCopiedTracking(true);
+    setTimeout(() => setCopiedTracking(false), 1800);
+  };
 
   const handleStatusChange = async (status: OrderStatus, defaultReason: string) => {
     setUpdating(true);
@@ -181,6 +238,115 @@ export function OrderDetailDrawer({
                 </span>
               </div>
             </div>
+
+            {order.customer_phone && (
+              <div className="pt-2 border-t border-slate-200/70 dark:border-slate-700/60">
+                <FraudCheckBadge phone={order.customer_phone} />
+              </div>
+            )}
+          </div>
+
+          {/* Courier Shipment & Live Tracking */}
+          <div className="bg-white dark:bg-slate-900 rounded-2xl p-4 border border-slate-200 dark:border-slate-800 space-y-3">
+            <div className="flex items-center justify-between gap-2">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
+                <Truck className="w-3.5 h-3.5 text-indigo-500" />
+                Courier & Live Tracking
+              </h3>
+              {shipment && (
+                <div className="flex items-center gap-2">
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase bg-indigo-50 text-indigo-700 dark:bg-indigo-500/15 dark:text-indigo-300">
+                    {shipment.provider}
+                  </span>
+                  <Link
+                    href="/couriers"
+                    className="text-[11px] font-semibold text-indigo-600 dark:text-indigo-400 hover:underline"
+                  >
+                    Open Dashboard
+                  </Link>
+                </div>
+              )}
+            </div>
+
+            {shipmentLoading ? (
+              <div className="text-xs text-slate-400 py-2">Loading courier status...</div>
+            ) : shipment ? (
+              <div className="space-y-3">
+                <div className="grid grid-cols-2 gap-2.5 text-xs bg-slate-50 dark:bg-slate-800/50 rounded-xl p-3 border border-slate-200/70 dark:border-slate-800">
+                  <div>
+                    <span className="text-[10px] text-slate-400 block">Consignment ID</span>
+                    <div className="flex items-center gap-1 font-mono font-bold text-slate-900 dark:text-white">
+                      <span className="truncate">{shipment.consignment_id}</span>
+                      <button
+                        type="button"
+                        onClick={() => handleCopyTracking(shipment.consignment_id)}
+                        className="text-slate-400 hover:text-indigo-500 shrink-0"
+                        title="Copy Consignment ID"
+                      >
+                        {copiedTracking ? (
+                          <Check className="w-3 h-3 text-emerald-500" />
+                        ) : (
+                          <Copy className="w-3 h-3" />
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-slate-400 block">COD & Settlement</span>
+                    <div className="font-bold text-slate-900 dark:text-white">
+                      ৳{Number(shipment.cod_amount || 0).toLocaleString()}{" "}
+                      <span
+                        className={`ml-1 text-[10px] px-1.5 py-0.5 rounded ${
+                          shipment.is_settled
+                            ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300"
+                            : "bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-300"
+                        }`}
+                      >
+                        {shipment.is_settled ? "Settled" : "Unsettled"}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <TrackingTimeline
+                  status={shipment.status}
+                  events={shipment.tracking_events}
+                  compact
+                  onSync={handleSyncShipment}
+                  syncing={syncingShipment}
+                />
+
+                {(shipment.status === "returned" || shipment.status === "cancelled") &&
+                  onOpenDispatch && (
+                    <button
+                      type="button"
+                      onClick={() => onOpenDispatch(order)}
+                      className="w-full py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold flex items-center justify-center gap-1.5 transition-colors"
+                    >
+                      <RefreshCw className="w-3.5 h-3.5" />
+                      Re-dispatch with Another Courier
+                    </button>
+                  )}
+              </div>
+            ) : (
+              <div className="flex items-center justify-between gap-3 py-1">
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  {order.status === "confirmed"
+                    ? "Order is confirmed and ready for Steadfast, Pathao, or eCourier booking."
+                    : "No courier consignment linked to this order yet."}
+                </p>
+                {order.status === "confirmed" && onOpenDispatch && (
+                  <button
+                    type="button"
+                    onClick={() => onOpenDispatch(order)}
+                    className="px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold inline-flex items-center gap-1.5 shrink-0 transition-colors"
+                  >
+                    <Send className="w-3.5 h-3.5" />
+                    Dispatch Courier
+                  </button>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Line Items & COGS Breakdown */}

@@ -9,7 +9,7 @@ import {
 export const couriersApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
     getCourierKPIs: builder.query<CourierKPIStats, void>({
-      query: () => "/couriers/kpis",
+      query: () => "/couriers/stats/kpis",
       providesTags: ["Couriers"],
     }),
     getShipments: builder.query<

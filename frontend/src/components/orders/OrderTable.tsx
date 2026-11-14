@@ -23,7 +23,10 @@ interface OrderTableProps {
   onQuickConfirm: (orderId: string) => Promise<void>;
   onQuickCancel: (orderId: string) => Promise<void>;
   onDeleteOrder: (orderId: string) => Promise<void>;
-  onDispatchOrder?: (orderId: string) => Promise<void>;
+  onDispatchOrder?: (orderId: string) => Promise<void> | void;
+  selectedOrderIds?: string[];
+  onToggleSelectOrder?: (orderId: string) => void;
+  onToggleSelectAll?: () => void;
 }
 
 export function OrderTable({
@@ -34,8 +37,15 @@ export function OrderTable({
   onQuickCancel,
   onDeleteOrder,
   onDispatchOrder,
+  selectedOrderIds = [],
+  onToggleSelectOrder,
+  onToggleSelectAll,
 }: OrderTableProps) {
   const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
+  const selectableOrders = orders.filter((o) => o.status === "confirmed");
+  const allConfirmedSelected =
+    selectableOrders.length > 0 &&
+    selectableOrders.every((o) => selectedOrderIds.includes(o.id));
 
 
   const getStatusBadge = (status: string) => {
@@ -140,6 +150,18 @@ export function OrderTable({
         <table className="w-full text-left text-xs">
           <thead className="bg-slate-50 dark:bg-slate-800/50 text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-800 uppercase font-semibold text-[11px] tracking-wider">
             <tr>
+              {onToggleSelectOrder && (
+                <th className="pl-4 pr-2 py-3.5 w-8">
+                  <input
+                    type="checkbox"
+                    checked={allConfirmedSelected}
+                    disabled={selectableOrders.length === 0}
+                    onChange={() => onToggleSelectAll?.()}
+                    title="Select all confirmed orders for bulk courier dispatch"
+                    className="w-3.5 h-3.5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer disabled:opacity-40"
+                  />
+                </th>
+              )}
               <th className="px-5 py-3.5">Order No & Source</th>
               <th className="px-4 py-3.5">Customer & City</th>
               <th className="px-4 py-3.5 text-center">Items</th>
@@ -153,13 +175,34 @@ export function OrderTable({
           <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 font-medium">
             {orders.map((order) => {
               const isActioning = actionLoadingId === order.id;
+              const isChecked = selectedOrderIds.includes(order.id);
 
               return (
                 <tr
                   key={order.id}
                   onClick={() => onViewOrder(order)}
-                  className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 cursor-pointer transition-colors"
+                  className={`hover:bg-slate-50/80 dark:hover:bg-slate-800/40 cursor-pointer transition-colors ${
+                    isChecked ? "bg-indigo-50/50 dark:bg-indigo-950/20" : ""
+                  }`}
                 >
+                  {onToggleSelectOrder && (
+                    <td
+                      className="pl-4 pr-2 py-3.5"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      {order.status === "confirmed" ? (
+                        <input
+                          type="checkbox"
+                          checked={isChecked}
+                          onChange={() => onToggleSelectOrder(order.id)}
+                          title="Select for bulk courier dispatch"
+                          className="w-3.5 h-3.5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                        />
+                      ) : (
+                        <span className="inline-block w-3.5 h-3.5" />
+                      )}
+                    </td>
+                  )}
                   {/* Order Number & Source */}
                   <td className="px-5 py-3.5">
                     <div className="font-bold text-slate-900 dark:text-white">
@@ -282,7 +325,7 @@ export function OrderTable({
                             }
                           }}
                           className="px-2.5 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-[10px] transition-all flex items-center gap-1 shadow-xs disabled:opacity-50"
-                          title="Dispatch to Courier (Steadfast/Pathao)"
+                          title="Dispatch to Courier (Steadfast / Pathao / eCourier)"
                         >
                           <Truck className="w-3 h-3" />
                           Send Courier
