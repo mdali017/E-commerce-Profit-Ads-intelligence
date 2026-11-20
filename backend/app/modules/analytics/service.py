@@ -301,11 +301,16 @@ class AnalyticsService:
         meta_connected = (ad_acc_res.scalar() or 0) > 0
 
         courier_res = await db.execute(
-            select(func.count(CourierCredential.id)).where(
+            select(CourierCredential.provider).where(
                 and_(CourierCredential.tenant_id == tenant_id, CourierCredential.is_active == True)
             )
         )
-        courier_connected = (courier_res.scalar() or 0) > 0
+        courier_rows = courier_res.fetchall()
+        connected_couriers = [
+            r[0].value if hasattr(r[0], "value") else str(r[0])
+            for r in courier_rows
+        ]
+        courier_connected = len(connected_couriers) > 0
 
         order_count_res = await db.execute(
             select(func.count(Order.id)).where(Order.tenant_id == tenant_id)
@@ -332,6 +337,7 @@ class AnalyticsService:
             total_connected=total_conn,
             all_connected=total_conn == 4,
             is_fresh_workspace=is_fresh,
+            connected_couriers=connected_couriers,
         )
 
         resp = ExecutiveOverviewResponse(

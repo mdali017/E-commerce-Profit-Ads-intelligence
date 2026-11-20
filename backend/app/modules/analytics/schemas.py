@@ -1,7 +1,7 @@
 from datetime import datetime
 from decimal import Decimal
 from typing import List, Optional, Dict, Any
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class ExecutiveKPIs(BaseModel):
@@ -89,6 +89,7 @@ class IntegrationStatus(BaseModel):
     total_connected: int = 0
     all_connected: bool = False
     is_fresh_workspace: bool = True
+    connected_couriers: List[str] = Field(default_factory=list)
 
 
 class ExecutiveOverviewResponse(BaseModel):

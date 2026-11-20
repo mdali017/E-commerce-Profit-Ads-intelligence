@@ -1097,6 +1097,7 @@ export interface IntegrationStatus {
   total_connected: number;
   all_connected: boolean;
   is_fresh_workspace: boolean;
+  connected_couriers?: string[];
 }
 
 export interface ExecutiveOverviewResponse {
