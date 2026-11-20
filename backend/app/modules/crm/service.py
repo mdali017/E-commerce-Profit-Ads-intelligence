@@ -29,6 +29,7 @@ from app.modules.crm.schemas import (
 from app.modules.crm.sms_connector import get_sms_connector, BaseSMSConnector
 from app.modules.orders.models import Order, OrderStatus
 from app.modules.workspaces.models import Tenant
+from app.core.redis import get_cache, set_cache, delete_cache
 
 
 class CRMService:
@@ -269,6 +270,14 @@ class CRMService:
     @classmethod
     async def get_crm_kpis(cls, db: AsyncSession, tenant_id: str) -> CRMKPIStats:
         """Returns executive CRM metrics: Repeat rate, average LTV, and risk counts."""
+        cache_key = f"crm:kpis:{tenant_id}"
+        cached = await get_cache(cache_key)
+        if cached:
+            try:
+                return CRMKPIStats(**cached)
+            except Exception:
+                pass
+
         stmt = select(Customer).where(Customer.tenant_id == tenant_id)
         res = await db.execute(stmt)
         customers = res.scalars().all()
@@ -286,7 +295,7 @@ class CRMService:
         s_res = await db.execute(sms_stmt)
         total_sms = s_res.scalar_one()
 
-        return CRMKPIStats(
+        kpis = CRMKPIStats(
             total_customers=total,
             repeat_customers_count=repeats,
             repeat_rate_percent=repeat_rate,
@@ -294,6 +303,8 @@ class CRMService:
             high_risk_customers_count=high_risk,
             total_sms_sent=total_sms,
         )
+        await set_cache(cache_key, kpis.model_dump(mode="json"), ttl_seconds=180)
+        return kpis
 
     # ==========================================
     # 2. SMS Gateway Configuration & Credential

@@ -9,6 +9,7 @@ import {
 } from "@/types";
 import { couriersApi } from "@/lib/couriers";
 import { jobsApi, BackgroundJob } from "@/lib/jobs";
+import { getSessionCache, setSessionCache } from "@/lib/swr";
 import { CourierStats } from "@/components/couriers/CourierStats";
 import { ShipmentTable } from "@/components/couriers/ShipmentTable";
 import { ConfigureCourierModal } from "@/components/couriers/ConfigureCourierModal";
@@ -28,6 +29,14 @@ import {
   Settings2,
   Radio,
 } from "lucide-react";
+
+const COURIER_CACHE_KEY = "profitpulse_courier_cache";
+
+interface CourierCacheData {
+  shipments: CourierShipment[];
+  kpis: CourierKPIStats | null;
+  credentials: CourierCredential[];
+}
 
 const STATUS_TABS = [
   { id: "all", label: "All Parcels" },
@@ -59,8 +68,8 @@ export default function CouriersPage() {
   const [selectedShipment, setSelectedShipment] = useState<CourierShipment | null>(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
-  const loadData = useCallback(async () => {
-    setLoading(true);
+  const loadData = useCallback(async (silent = false) => {
+    if (!silent && shipments.length === 0) setLoading(true);
     setError(null);
     try {
       const [shipmentsData, kpisData, credsData] = await Promise.all([
@@ -83,6 +92,13 @@ export default function CouriersPage() {
       setShipments(shipmentsData);
       setKpis(kpisData);
       setCredentials(credsData);
+      if (selectedStatus === "all" && providerFilter === "all" && settlementFilter === "all" && daysFilter === "all" && !search) {
+        setSessionCache<CourierCacheData>(COURIER_CACHE_KEY, {
+          shipments: shipmentsData,
+          kpis: kpisData,
+          credentials: credsData,
+        });
+      }
     } catch (err: any) {
       console.error("Failed to load courier shipments:", err);
       setError(
@@ -92,10 +108,19 @@ export default function CouriersPage() {
     } finally {
       setLoading(false);
     }
-  }, [selectedStatus, providerFilter, settlementFilter, daysFilter, search]);
+  }, [selectedStatus, providerFilter, settlementFilter, daysFilter, search, shipments.length]);
 
   useEffect(() => {
-    loadData();
+    // 1. Immediately hydrate from client session cache for 0ms instant render
+    const cached = getSessionCache<CourierCacheData>(COURIER_CACHE_KEY);
+    if (cached && selectedStatus === "all" && providerFilter === "all") {
+      setShipments(cached.shipments);
+      setKpis(cached.kpis);
+      setCredentials(cached.credentials);
+      setLoading(false);
+    }
+    // 2. Silently revalidate fresh metrics in background
+    loadData(!!cached);
   }, [loadData]);
 
   // Workspace switcher support

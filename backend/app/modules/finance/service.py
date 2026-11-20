@@ -22,6 +22,7 @@ from app.modules.orders.models import Order, OrderItem, OrderStatus, PaymentStat
 from app.modules.couriers.models import CourierShipment, ShipmentStatus
 from app.modules.ads.models import MetaDailyInsight, MetaCampaign
 from app.modules.workspaces.models import Tenant
+from app.core.redis import get_cache, set_cache, delete_cache
 
 
 class FinanceService:
@@ -193,6 +194,14 @@ class FinanceService:
 
         start_dt = datetime.combine(start_date, datetime.min.time())
         end_dt = datetime.combine(end_date, datetime.max.time())
+
+        cache_key = f"pnl:summary:{tenant_id}:{date_basis}:{start_date.isoformat()}:{end_date.isoformat()}"
+        cached = await get_cache(cache_key)
+        if cached:
+            try:
+                return PnLSummaryResponse(**cached)
+            except Exception:
+                pass
 
         # 1. Fetch Tenant currency
         tenant_stmt = select(Tenant).where(Tenant.id == tenant_id)
@@ -404,7 +413,7 @@ class FinanceService:
             PnLWaterfallItem(line_name="Net Profit / Loss", amount=net_profit, percentage_of_revenue=net_margin_percent, type="subtotal"),
         ]
 
-        return PnLSummaryResponse(
+        resp = PnLSummaryResponse(
             currency=currency,
             date_basis=date_basis,
             start_date=start_date,
@@ -433,6 +442,8 @@ class FinanceService:
             actual_delivered_roas=actual_delivered_roas,
             waterfall=waterfall,
         )
+        await set_cache(cache_key, resp.model_dump(mode="json"), ttl_seconds=180)
+        return resp
 
     # ==========================================
     # 3. Daily Profit & Loss Trend Timeseries
@@ -458,40 +469,53 @@ class FinanceService:
         num_days = (end_date - start_date).days + 1
         points: List[PnLTimeSeriesPoint] = []
 
-        # Pre-fetch delivered orders
+        # Pre-fetch delivered orders via grouped SQL aggregation (zero ORM entity overhead)
         start_dt = datetime.combine(start_date, datetime.min.time())
         end_dt = datetime.combine(end_date, datetime.max.time())
-        orders_stmt = select(Order).where(
-            and_(
-                Order.tenant_id == tenant_id,
-                Order.status == OrderStatus.DELIVERED,
-                Order.updated_at >= start_dt,
-                Order.updated_at <= end_dt,
+        orders_stmt = (
+            select(
+                func.date(Order.updated_at).label("order_day"),
+                func.count(Order.id).label("delivered_count"),
+                func.coalesce(func.sum(Order.total_amount), Decimal("0.00")).label("revenue"),
+                func.coalesce(func.sum(Order.total_cogs), Decimal("0.00")).label("cogs"),
+                func.coalesce(
+                    func.sum(
+                        func.coalesce(Order.total_packaging_cost, Decimal("0.00"))
+                        + func.coalesce(Order.total_handling_cost, Decimal("0.00"))
+                    ),
+                    Decimal("0.00"),
+                ).label("pack_handling"),
             )
+            .where(
+                and_(
+                    Order.tenant_id == tenant_id,
+                    Order.status.in_([OrderStatus.DELIVERED.value, OrderStatus.DELIVERED]),
+                    Order.updated_at >= start_dt,
+                    Order.updated_at <= end_dt,
+                )
+            )
+            .group_by(func.date(Order.updated_at))
         )
         o_res = await db.execute(orders_stmt)
-        all_orders = o_res.scalars().all()
+        orders_by_date = {row.order_day: row for row in o_res.all()}
 
-        # Pre-fetch ads insights
-        ads_stmt = select(MetaDailyInsight).where(
-            and_(
-                MetaDailyInsight.tenant_id == tenant_id,
-                MetaDailyInsight.report_date >= start_date,
-                MetaDailyInsight.report_date <= end_date,
+        # Pre-fetch ads insights via SQL aggregation
+        ads_stmt = (
+            select(
+                MetaDailyInsight.report_date.label("ad_day"),
+                func.coalesce(func.sum(MetaDailyInsight.spend), Decimal("0.00")).label("spend"),
             )
+            .where(
+                and_(
+                    MetaDailyInsight.tenant_id == tenant_id,
+                    MetaDailyInsight.report_date >= start_date,
+                    MetaDailyInsight.report_date <= end_date,
+                )
+            )
+            .group_by(MetaDailyInsight.report_date)
         )
         ad_res = await db.execute(ads_stmt)
-        all_ads = ad_res.scalars().all()
-
-        # Map by date
-        orders_by_date: Dict[date, List[Order]] = {}
-        for o in all_orders:
-            d = o.updated_at.date()
-            orders_by_date.setdefault(d, []).append(o)
-
-        ads_by_date: Dict[date, Decimal] = {}
-        for a in all_ads:
-            ads_by_date[a.report_date] = ads_by_date.get(a.report_date, Decimal("0.00")) + Decimal(str(a.spend))
+        ads_by_date: Dict[date, Decimal] = {row.ad_day: Decimal(str(row.spend)) for row in ad_res.all()}
 
         # Pre-fetch daily opex proration
         rec_stmt = select(OperatingExpense).where(
@@ -509,27 +533,35 @@ class FinanceService:
             elif rec.recurrence_period == RecurrencePeriod.WEEKLY.value:
                 daily_recurring_opex += Decimal(str(rec.amount)) / Decimal("7.0")
 
-        # One-time opex by date
-        one_time_stmt = select(OperatingExpense).where(
-            and_(
-                OperatingExpense.tenant_id == tenant_id,
-                OperatingExpense.is_recurring == False,
-                OperatingExpense.expense_date >= start_date,
-                OperatingExpense.expense_date <= end_date,
+        # One-time opex aggregated by date
+        one_time_stmt = (
+            select(
+                OperatingExpense.expense_date.label("expense_day"),
+                func.coalesce(func.sum(OperatingExpense.amount), Decimal("0.00")).label("expense_amount"),
             )
+            .where(
+                and_(
+                    OperatingExpense.tenant_id == tenant_id,
+                    OperatingExpense.is_recurring == False,
+                    OperatingExpense.expense_date >= start_date,
+                    OperatingExpense.expense_date <= end_date,
+                )
+            )
+            .group_by(OperatingExpense.expense_date)
         )
         ot_res = await db.execute(one_time_stmt)
-        one_time_by_date: Dict[date, Decimal] = {}
-        for ot in ot_res.scalars().all():
-            one_time_by_date[ot.expense_date] = one_time_by_date.get(ot.expense_date, Decimal("0.00")) + Decimal(str(ot.amount))
+        one_time_by_date: Dict[date, Decimal] = {
+            row.expense_day: Decimal(str(row.expense_amount)) for row in ot_res.all()
+        }
 
         for i in range(num_days):
             current_date = start_date + timedelta(days=i)
-            day_orders = orders_by_date.get(current_date, [])
-            day_revenue = sum((Decimal(str(o.total_amount or 0)) for o in day_orders), Decimal("0.00"))
-            day_cogs = sum((Decimal(str(o.total_cogs or 0)) for o in day_orders), Decimal("0.00"))
-            day_pack = sum(((Decimal(str(o.total_packaging_cost or 0)) + Decimal(str(o.total_handling_cost or 0))) for o in day_orders), Decimal("0.00"))
-            day_courier = Decimal(str(len(day_orders) * 80.0))  # standard ~80 per delivered order
+            o_row = orders_by_date.get(current_date)
+            delivered_cnt = o_row.delivered_count if o_row else 0
+            day_revenue = Decimal(str(o_row.revenue)) if o_row else Decimal("0.00")
+            day_cogs = Decimal(str(o_row.cogs)) if o_row else Decimal("0.00")
+            day_pack = Decimal(str(o_row.pack_handling)) if o_row else Decimal("0.00")
+            day_courier = Decimal(str(delivered_cnt * 80.0))  # standard ~80 per delivered order
             day_ad_spend = ads_by_date.get(current_date, Decimal("0.00"))
             day_opex = (daily_recurring_opex + one_time_by_date.get(current_date, Decimal("0.00"))).quantize(Decimal("0.01"))
 
@@ -539,7 +571,7 @@ class FinanceService:
             points.append(
                 PnLTimeSeriesPoint(
                     report_date=current_date,
-                    delivered_orders=len(day_orders),
+                    delivered_orders=delivered_cnt,
                     delivered_revenue=day_revenue,
                     cogs=day_cogs,
                     courier_cost=day_courier,

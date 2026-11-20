@@ -3,12 +3,20 @@
 import { useEffect, useState, useMemo, useCallback } from "react";
 import { Product, CostCoverageStats, ProductCreateInput, BulkCostItem, BulkCostUploadResult } from "@/types";
 import { productsApi } from "@/lib/products";
+import { getSessionCache, setSessionCache } from "@/lib/swr";
 import { ProductStats } from "@/components/products/ProductStats";
 import { ProductTable } from "@/components/products/ProductTable";
 import { AddProductModal } from "@/components/products/AddProductModal";
 import { CostAuditModal } from "@/components/products/CostAuditModal";
 import { BulkUploadModal } from "@/components/products/BulkUploadModal";
 import { Plus, UploadCloud, RefreshCw, AlertCircle } from "lucide-react";
+
+const PRODUCTS_CACHE_KEY = "profitpulse_products_cache";
+
+interface ProductsCacheData {
+  products: Product[];
+  stats: CostCoverageStats | null;
+}
 
 export default function ProductsPage() {
   const [products, setProducts] = useState<Product[]>([]);
@@ -27,9 +35,9 @@ export default function ProductsPage() {
   const [auditProduct, setAuditProduct] = useState<Product | null>(null);
   const [isBulkModalOpen, setIsBulkModalOpen] = useState(false);
 
-  // Load data
-  const loadData = useCallback(async () => {
-    setLoading(true);
+  // Load data with silent background revalidation
+  const loadData = useCallback(async (silent = false) => {
+    if (!silent && products.length === 0) setLoading(true);
     setError(null);
     try {
       let hasCostParam: boolean | undefined = undefined;
@@ -47,16 +55,31 @@ export default function ProductsPage() {
 
       setProducts(prodsData);
       setStats(statsData);
+
+      if (!search.trim() && !categoryFilter && costFilter === "all") {
+        setSessionCache<ProductsCacheData>(PRODUCTS_CACHE_KEY, {
+          products: prodsData,
+          stats: statsData,
+        });
+      }
     } catch (err: any) {
       console.error("Failed to load products data:", err);
       setError(err?.message || "Failed to load products. Make sure backend is running and workspace is selected.");
     } finally {
       setLoading(false);
     }
-  }, [search, categoryFilter, costFilter]);
+  }, [search, categoryFilter, costFilter, products.length]);
 
   useEffect(() => {
-    loadData();
+    // 1. Immediately hydrate from client session cache for 0ms instant render
+    const cached = getSessionCache<ProductsCacheData>(PRODUCTS_CACHE_KEY);
+    if (cached && !search.trim() && !categoryFilter && costFilter === "all") {
+      setProducts(cached.products);
+      setStats(cached.stats);
+      setLoading(false);
+    }
+    // 2. Silently revalidate fresh metrics in background
+    loadData(!!cached);
   }, [loadData]);
 
   // Unique categories for filter dropdown

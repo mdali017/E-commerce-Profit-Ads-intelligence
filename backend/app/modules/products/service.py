@@ -7,6 +7,7 @@ from sqlalchemy.orm import selectinload
 from sqlalchemy import func, or_
 
 from app.modules.products.models import Product, ProductVariant, ProductCostHistory
+from app.core.redis import get_cache, set_cache, delete_cache
 from app.modules.products.schemas import (
     ProductCreate,
     ProductUpdate,
@@ -397,6 +398,14 @@ class ProductService:
     async def get_cost_coverage_stats(
         db: AsyncSession, tenant_id: str
     ) -> CostCoverageStats:
+        cache_key = f"products:coverage:{tenant_id}"
+        cached = await get_cache(cache_key)
+        if cached:
+            try:
+                return CostCoverageStats(**cached)
+            except Exception:
+                pass
+
         # 1. Total products
         total_p_res = await db.execute(
             select(func.count(Product.id)).where(Product.tenant_id == tenant_id)
@@ -437,7 +446,7 @@ class ProductService:
             else 0.0
         )
 
-        return CostCoverageStats(
+        stats = CostCoverageStats(
             total_products=total_products,
             products_with_cost=products_with_cost,
             products_missing_cost=products_missing_cost,
@@ -445,6 +454,8 @@ class ProductService:
             total_variants=total_variants,
             variants_with_cost=variants_with_cost,
         )
+        await set_cache(cache_key, stats.model_dump(mode="json"), ttl_seconds=180)
+        return stats
 
     @staticmethod
     async def bulk_update_costs(

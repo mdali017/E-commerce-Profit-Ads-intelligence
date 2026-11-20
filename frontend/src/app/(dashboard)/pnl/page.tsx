@@ -9,6 +9,7 @@ import {
   ProductPnLItem,
 } from "@/types";
 import { financeApi, ExpenseCategoryItem } from "@/lib/finance";
+import { getSessionCache, setSessionCache } from "@/lib/swr";
 import { PnLSummaryHero } from "@/components/pnl/PnLSummaryHero";
 import { PnLWaterfall } from "@/components/pnl/PnLWaterfall";
 import { PnLTrendChart } from "@/components/pnl/PnLTrendChart";
@@ -25,6 +26,15 @@ import {
   Receipt,
   RefreshCw,
 } from "lucide-react";
+
+interface PnLCacheData {
+  summary: PnLSummary | null;
+  trends: PnLTimeSeriesPoint[];
+  breakeven: BreakEvenAnalysis | null;
+  expenses: OperatingExpense[];
+  categories: ExpenseCategoryItem[];
+  productPnl: ProductPnLItem[];
+}
 
 export default function PnLPage() {
   const [dateRange, setDateRange] = useState<"7d" | "30d" | "month" | "today">("7d");
@@ -63,9 +73,10 @@ export default function PnLPage() {
     return { start, end };
   }, [dateRange]);
 
-  const loadData = useCallback(async () => {
-    setLoading(true);
+  const loadData = useCallback(async (silent = false) => {
+    if (!silent && !summary) setLoading(true);
     const { start, end } = getDateBounds();
+    const cacheKey = `profitpulse_pnl_${dateRange}_${dateBasis}`;
 
     try {
       const [sumRes, trendRes, beRes, expRes, catRes, prodRes] = await Promise.all([
@@ -83,16 +94,38 @@ export default function PnLPage() {
       setExpenses(expRes);
       setCategories(catRes);
       setProductPnl(prodRes);
+
+      setSessionCache<PnLCacheData>(cacheKey, {
+        summary: sumRes,
+        trends: trendRes,
+        breakeven: beRes,
+        expenses: expRes,
+        categories: catRes,
+        productPnl: prodRes,
+      });
     } catch (err) {
       console.error("Failed to load P&L financial data:", err);
     } finally {
       setLoading(false);
     }
-  }, [dateBasis, getDateBounds]);
+  }, [dateBasis, dateRange, getDateBounds, summary]);
 
   useEffect(() => {
-    loadData();
-  }, [loadData]);
+    // 1. Immediately hydrate from client session cache for 0ms instant render
+    const cacheKey = `profitpulse_pnl_${dateRange}_${dateBasis}`;
+    const cached = getSessionCache<PnLCacheData>(cacheKey);
+    if (cached) {
+      setSummary(cached.summary);
+      setTrends(cached.trends);
+      setBreakeven(cached.breakeven);
+      setExpenses(cached.expenses);
+      setCategories(cached.categories);
+      setProductPnl(cached.productPnl);
+      setLoading(false);
+    }
+    // 2. Silently revalidate fresh metrics in background
+    loadData(!!cached);
+  }, [dateRange, dateBasis]);
 
   async function handleDeleteExpense(id: string) {
     if (!confirm("Are you sure you want to delete this operating expense?")) return;
@@ -190,7 +223,7 @@ export default function PnLPage() {
           </button>
 
           <button
-            onClick={loadData}
+            onClick={() => loadData(false)}
             disabled={loading}
             className="p-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 rounded-xl hover:bg-slate-50 transition-all disabled:opacity-50"
             title="Refresh financial data"

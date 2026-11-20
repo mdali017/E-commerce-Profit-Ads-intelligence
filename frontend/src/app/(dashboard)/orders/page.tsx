@@ -9,6 +9,7 @@ import {
   OrderStatus,
 } from "@/types";
 import { ordersApi } from "@/lib/orders";
+import { getSessionCache, setSessionCache } from "@/lib/swr";
 import { OrderStats } from "@/components/orders/OrderStats";
 
 import { OrderTable } from "@/components/orders/OrderTable";
@@ -72,9 +73,10 @@ export default function OrdersPage() {
 
   // Load Data with Silent Background Revalidation
   const loadData = useCallback(async (silent = false) => {
-    if (!silent) setLoading(true);
+    if (!silent && orders.length === 0) setLoading(true);
     setIsRefreshing(true);
     setError(null);
+    const cacheKey = `profitpulse_orders_${selectedStatus}_${sourceFilter}`;
     try {
       const [ordersData, kpisData] = await Promise.all([
         ordersApi.getOrders({
@@ -87,6 +89,9 @@ export default function OrdersPage() {
 
       setOrders(ordersData);
       setKpis(kpisData);
+      if (!debouncedSearch) {
+        setSessionCache(cacheKey, { orders: ordersData, kpis: kpisData });
+      }
     } catch (err: any) {
       console.error("Failed to load orders:", err);
       setError(
@@ -97,13 +102,20 @@ export default function OrdersPage() {
       setLoading(false);
       setIsRefreshing(false);
     }
-  }, [selectedStatus, sourceFilter, debouncedSearch]);
+  }, [selectedStatus, sourceFilter, debouncedSearch, orders.length]);
 
-  // Initial and reactive load (avoids wiping table to skeleton when data is already present)
+  // Initial and reactive load with instant SWR hydration
   useEffect(() => {
-    const isSilent = orders.length > 0;
+    const cacheKey = `profitpulse_orders_${selectedStatus}_${sourceFilter}`;
+    const cached = getSessionCache<{ orders: Order[]; kpis: OrderKPIStats }>(cacheKey);
+    if (cached && !debouncedSearch) {
+      setOrders(cached.orders);
+      setKpis(cached.kpis);
+      setLoading(false);
+    }
+    const isSilent = !!cached || orders.length > 0;
     loadData(isSilent);
-  }, [loadData]);
+  }, [selectedStatus, sourceFilter, debouncedSearch]);
 
   // Auto-Sync Polling: Check for incoming webhooks every 10 seconds silently
   useEffect(() => {

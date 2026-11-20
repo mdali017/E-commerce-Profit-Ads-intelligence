@@ -24,6 +24,7 @@ from app.modules.orders.schemas import (
     OrderKPIStats,
 )
 from app.modules.products.models import Product, ProductVariant
+from app.core.redis import get_cache, set_cache, delete_cache
 
 
 class OrderService:
@@ -449,6 +450,14 @@ class OrderService:
     @staticmethod
     async def get_order_kpis(db: AsyncSession, tenant_id: str) -> OrderKPIStats:
         """Calculate executive order metrics and status breakdown via a single consolidated SQL aggregation."""
+        cache_key = f"orders:kpis:{tenant_id}"
+        cached = await get_cache(cache_key)
+        if cached:
+            try:
+                return OrderKPIStats(**cached)
+            except Exception:
+                pass
+
         stmt = select(
             func.count(Order.id).label("total_orders"),
             func.sum(case((Order.status == OrderStatus.PENDING.value, 1), else_=0)).label("pending"),
@@ -498,7 +507,7 @@ class OrderService:
             else 0.0
         )
 
-        return OrderKPIStats(
+        kpis = OrderKPIStats(
             total_orders=total_orders,
             pending_orders=pending,
             confirmed_orders=confirmed,
@@ -514,6 +523,8 @@ class OrderService:
             delivery_rate_percent=delivery_rate,
             return_rate_percent=return_rate,
         )
+        await set_cache(cache_key, kpis.model_dump(mode="json"), ttl_seconds=180)
+        return kpis
 
     @staticmethod
     async def delete_order(db: AsyncSession, tenant_id: str, order_id: str) -> dict:

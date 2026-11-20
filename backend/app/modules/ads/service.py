@@ -14,6 +14,7 @@ from app.modules.ads.schemas import (
 )
 from app.modules.ads.connector import MetaMarketingConnector
 from app.modules.orders.models import Order, OrderAttribution, OrderStatus
+from app.core.redis import get_cache, set_cache, delete_cache
 
 logger = logging.getLogger("ads_service")
 
@@ -239,6 +240,14 @@ class AdsService:
         Calculates ground-truth attribution and True Delivered ROAS vs Meta Claimed ROAS.
         Cross-matches orders with campaigns via utm_campaign, campaign_id, or fbclid.
         """
+        cache_key = f"ads:perf:{tenant_id}"
+        cached = await get_cache(cache_key)
+        if cached:
+            try:
+                return [CampaignPerformanceItem(**item) for item in cached]
+            except Exception:
+                pass
+
         # 1. Fetch campaigns
         camp_stmt = select(MetaCampaign).where(MetaCampaign.tenant_id == tenant_id)
         camp_res = await db.execute(camp_stmt)
@@ -381,6 +390,7 @@ class AdsService:
                 )
             )
 
+        await set_cache(cache_key, [p.model_dump(mode="json") for p in perf_list], ttl_seconds=180)
         return perf_list
 
     @classmethod

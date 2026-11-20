@@ -43,6 +43,7 @@ from app.modules.couriers.connectors.pathao import PathaoConnector
 from app.modules.couriers.connectors.ecourier import ECourierConnector
 from app.modules.orders.models import Order, OrderStatus, PaymentStatus, OrderStatusHistory
 from app.modules.crm.service import CRMService
+from app.core.redis import get_cache, set_cache, delete_cache
 
 logger = logging.getLogger("courier_service")
 
@@ -1167,6 +1168,14 @@ class CourierService:
         cls, db: AsyncSession, tenant_id: str
     ) -> CourierKPIStats:
         """Calculates executive courier delivery performance metrics."""
+        cache_key = f"courier:kpis:{tenant_id}"
+        cached = await get_cache(cache_key)
+        if cached:
+            try:
+                return CourierKPIStats(**cached)
+            except Exception:
+                pass
+
         stmt = select(CourierShipment).where(CourierShipment.tenant_id == tenant_id)
         res = await db.execute(stmt)
         shipments = res.scalars().all()
@@ -1198,7 +1207,7 @@ class CourierService:
         ]
         avg_hours = round(sum(hours_list) / len(hours_list), 1) if hours_list else None
 
-        return CourierKPIStats(
+        kpis = CourierKPIStats(
             total_shipments=total,
             booked_count=booked,
             in_transit_count=transit,
@@ -1214,6 +1223,8 @@ class CourierService:
             unsettled_balance=unsettled,
             avg_delivery_hours=avg_hours,
         )
+        await set_cache(cache_key, kpis.model_dump(mode="json"), ttl_seconds=180)
+        return kpis
 
     @classmethod
     async def get_delivery_performance(

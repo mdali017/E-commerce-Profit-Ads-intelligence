@@ -105,7 +105,10 @@ class AnalyticsService:
         # 3. CRM & Retention KPIs
         crm_kpis = await CRMService.get_crm_kpis(db, tenant_id)
 
-        # 4. Period Orders Volume & Status Counts
+        start_dt = datetime.combine(start_date, datetime.min.time())
+        end_dt = datetime.combine(end_date, datetime.max.time())
+
+        # 4. Period Orders Volume & Status Counts (utilizing composite index ix_orders_tenant_order_date)
         orders_stmt = select(
             Order.status,
             func.count(Order.id).label("count"),
@@ -113,8 +116,8 @@ class AnalyticsService:
         ).where(
             and_(
                 Order.tenant_id == tenant_id,
-                func.date(Order.order_date) >= start_date,
-                func.date(Order.order_date) <= end_date,
+                Order.order_date >= start_dt,
+                Order.order_date <= end_dt,
             )
         ).group_by(Order.status)
         orders_res = await db.execute(orders_stmt)
@@ -142,9 +145,8 @@ class AnalyticsService:
             round(float(pnl.net_profit / ad_spend), 2) if ad_spend > Decimal("0.00") else 0.0
         )
 
-        # 6. Break-Even ROAS Benchmark
-        be_res = await FinanceService.get_breakeven_analysis(db, tenant_id, start_date, end_date)
-        break_even_roas = getattr(be_res, "breakeven_roas", getattr(be_res, "break_even_roas", 0.0))
+        # 6. Break-Even ROAS Benchmark (already calculated in pnl, zero extra DB overhead)
+        break_even_roas = pnl.breakeven_roas
 
         # 7. Bleeding Campaigns Detection
         camp_perf = await AdsService.get_campaign_performance(db, tenant_id)
@@ -227,7 +229,7 @@ class AnalyticsService:
         alerts_res = await db.execute(alerts_stmt)
         active_alerts = [AlertResponse.model_validate(a) for a in alerts_res.scalars().all()]
 
-        # 9. Revenue by Channel/Source
+        # 9. Revenue by Channel/Source (utilizing composite index ix_orders_tenant_order_date)
         source_stmt = select(
             Order.source,
             func.count(Order.id).label("count"),
@@ -235,8 +237,8 @@ class AnalyticsService:
         ).where(
             and_(
                 Order.tenant_id == tenant_id,
-                func.date(Order.order_date) >= start_date,
-                func.date(Order.order_date) <= end_date,
+                Order.order_date >= start_dt,
+                Order.order_date <= end_dt,
             )
         ).group_by(Order.source)
         source_res = await db.execute(source_stmt)

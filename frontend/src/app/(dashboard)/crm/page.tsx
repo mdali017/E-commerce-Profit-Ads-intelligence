@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { crmApi } from "@/lib/crm";
+import { getSessionCache, setSessionCache } from "@/lib/swr";
 import {
   Customer,
   CustomerDetail,
@@ -12,6 +13,16 @@ import {
   ConfigureSMSGatewayPayload,
   TestSendSMSPayload,
 } from "@/types";
+
+const CRM_CACHE_KEY = "profitpulse_crm_cache";
+
+interface CRMCacheData {
+  customers: Customer[];
+  kpis: CRMKPIStats | null;
+  gateway: SMSGateway | null;
+  rules: SMSAutomationRule[];
+  logs: SMSMessageLog[];
+}
 import { CRMStats } from "@/components/crm/CRMStats";
 import { CustomerTable } from "@/components/crm/CustomerTable";
 import { CustomerDetailDrawer } from "@/components/crm/CustomerDetailDrawer";
@@ -48,8 +59,8 @@ export default function CRMPage() {
   const [isGatewayModalOpen, setIsGatewayModalOpen] = useState(false);
   const [isTestSMSModalOpen, setIsTestSMSModalOpen] = useState(false);
 
-  const loadData = async () => {
-    setLoading(true);
+  const loadData = async (silent = false) => {
+    if (!silent && customers.length === 0) setLoading(true);
     try {
       const [custList, kpiRes, gwRes, ruleList, logList] = await Promise.all([
         crmApi.getCustomers(search, segmentFilter),
@@ -63,6 +74,16 @@ export default function CRMPage() {
       setGateway(gwRes);
       setRules(ruleList);
       setLogs(logList);
+
+      if (!search.trim() && segmentFilter === "all") {
+        setSessionCache<CRMCacheData>(CRM_CACHE_KEY, {
+          customers: custList,
+          kpis: kpiRes,
+          gateway: gwRes,
+          rules: ruleList,
+          logs: logList,
+        });
+      }
     } catch (err: any) {
       console.error("Failed to load CRM data:", err);
     } finally {
@@ -71,7 +92,18 @@ export default function CRMPage() {
   };
 
   useEffect(() => {
-    loadData();
+    // 1. Immediately hydrate from client session cache for 0ms instant render
+    const cached = getSessionCache<CRMCacheData>(CRM_CACHE_KEY);
+    if (cached && !search.trim() && segmentFilter === "all") {
+      setCustomers(cached.customers);
+      setKpis(cached.kpis);
+      setGateway(cached.gateway);
+      setRules(cached.rules);
+      setLogs(cached.logs);
+      setLoading(false);
+    }
+    // 2. Silently revalidate fresh metrics in background
+    loadData(!!cached);
   }, [segmentFilter]);
 
   const handleSearchSubmit = (e: React.FormEvent) => {

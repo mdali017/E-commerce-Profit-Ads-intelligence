@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import { CampaignPerformanceItem, AdsKPIStats } from "@/types";
 import { adsApi } from "@/lib/ads";
 import { jobsApi, BackgroundJob } from "@/lib/jobs";
+import { getSessionCache, setSessionCache } from "@/lib/swr";
 import { AdsStats } from "@/components/ads/AdsStats";
 import { CampaignTable } from "@/components/ads/CampaignTable";
 import { ConnectMetaModal } from "@/components/ads/ConnectMetaModal";
@@ -17,6 +18,13 @@ import {
   HelpCircle,
 } from "lucide-react";
 
+const ADS_CACHE_KEY = "profitpulse_ads_cache";
+
+interface AdsCacheData {
+  campaigns: CampaignPerformanceItem[];
+  kpis: AdsKPIStats | null;
+}
+
 export default function AdsPage() {
   const [campaigns, setCampaigns] = useState<CampaignPerformanceItem[]>([]);
   const [kpis, setKpis] = useState<AdsKPIStats | null>(null);
@@ -26,8 +34,8 @@ export default function AdsPage() {
   const [error, setError] = useState<string | null>(null);
   const [isConnectModalOpen, setIsConnectModalOpen] = useState(false);
 
-  const loadData = useCallback(async () => {
-    setLoading(true);
+  const loadData = useCallback(async (silent = false) => {
+    if (!silent && campaigns.length === 0) setLoading(true);
     setError(null);
     try {
       const [perfData, kpisData] = await Promise.all([
@@ -36,6 +44,7 @@ export default function AdsPage() {
       ]);
       setCampaigns(perfData);
       setKpis(kpisData);
+      setSessionCache<AdsCacheData>(ADS_CACHE_KEY, { campaigns: perfData, kpis: kpisData });
     } catch (err: any) {
       console.error("Failed to load ads intelligence:", err);
       setError(
@@ -45,11 +54,19 @@ export default function AdsPage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [campaigns.length]);
 
   useEffect(() => {
-    loadData();
-  }, [loadData]);
+    // 1. Immediately hydrate from client session cache for 0ms instant render
+    const cached = getSessionCache<AdsCacheData>(ADS_CACHE_KEY);
+    if (cached) {
+      setCampaigns(cached.campaigns);
+      setKpis(cached.kpis);
+      setLoading(false);
+    }
+    // 2. Silently revalidate fresh metrics in background
+    loadData(!!cached);
+  }, []);
 
   const handleSyncInsights = async () => {
     setSyncing(true);
