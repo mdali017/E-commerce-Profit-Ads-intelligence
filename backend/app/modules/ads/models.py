@@ -13,6 +13,7 @@ from sqlalchemy import (
     Integer,
     Float,
     UniqueConstraint,
+    Index,
 )
 from sqlalchemy.orm import relationship
 
@@ -77,6 +78,10 @@ class MetaDailyInsight(Base):
     Daily aggregated campaign ad spend, impressions, clicks, and Pixel reported conversions.
     """
     __tablename__ = "meta_daily_insights"
+    __table_args__ = (
+        Index("ix_meta_daily_insights_query", "tenant_id", "ad_account_id", "report_date"),
+        Index("ix_meta_daily_insights_campaign", "tenant_id", "campaign_id", "report_date"),
+    )
 
     id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     tenant_id = Column(String(36), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False, index=True)

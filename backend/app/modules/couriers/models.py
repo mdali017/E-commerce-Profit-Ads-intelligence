@@ -13,6 +13,7 @@ from sqlalchemy import (
     Enum,
     Integer,
     JSON,
+    Index,
 )
 from sqlalchemy.orm import relationship
 
@@ -83,6 +84,10 @@ class CourierShipment(Base):
     Canonical shipment representation mapped across Steadfast, Pathao, eCourier, and RedX.
     """
     __tablename__ = "courier_shipments"
+    __table_args__ = (
+        Index("ix_courier_shipments_poll", "tenant_id", "status", "last_polled_at"),
+        Index("ix_courier_shipments_order", "tenant_id", "order_id"),
+    )
 
     id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     tenant_id = Column(String(36), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False, index=True)

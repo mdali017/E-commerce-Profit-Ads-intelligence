@@ -3,7 +3,7 @@ import io
 from datetime import date, datetime, timedelta
 from decimal import Decimal
 from typing import List, Optional, Tuple, Dict, Any
-from sqlalchemy import select, and_, or_, func, desc
+from sqlalchemy import select, and_, or_, func, desc, case
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -200,74 +200,70 @@ class FinanceService:
         tenant_obj = tenant_res.scalar_one_or_none()
         currency = tenant_obj.currency if tenant_obj else "BDT"
 
-        # 2. Fetch Orders in the period according to date_basis
+        # 2. Fetch Aggregated Orders Metrics directly via SQL (zero in-memory ORM bloat)
+        placed_agg_stmt = select(
+            func.count(Order.id).label("count"),
+            func.coalesce(func.sum(Order.total_amount), Decimal("0.00")).label("gross_sales"),
+        ).where(
+            and_(
+                Order.tenant_id == tenant_id,
+                Order.created_at >= start_dt,
+                Order.created_at <= end_dt,
+            )
+        )
+        placed_agg = (await db.execute(placed_agg_stmt)).one()
+        total_orders_placed = placed_agg.count
+        gross_sales = placed_agg.gross_sales
+
         if date_basis == "delivery_date":
-            # Cash/Accrual delivery basis:
-            # Delivered orders whose updated_at falls in [start_date, end_date]
-            deliv_orders_stmt = select(Order).where(
-                and_(
-                    Order.tenant_id == tenant_id,
-                    Order.status == OrderStatus.DELIVERED,
-                    Order.updated_at >= start_dt,
-                    Order.updated_at <= end_dt,
-                )
-            )
-            all_placed_stmt = select(Order).where(
-                and_(
-                    Order.tenant_id == tenant_id,
-                    Order.created_at >= start_dt,
-                    Order.created_at <= end_dt,
-                )
-            )
-            canc_orders_stmt = select(Order).where(
-                and_(
-                    Order.tenant_id == tenant_id,
-                    Order.status == OrderStatus.CANCELLED,
-                    Order.updated_at >= start_dt,
-                    Order.updated_at <= end_dt,
-                )
-            )
-            ret_orders_stmt = select(Order).where(
-                and_(
-                    Order.tenant_id == tenant_id,
-                    Order.status == OrderStatus.RETURNED,
-                    Order.updated_at >= start_dt,
-                    Order.updated_at <= end_dt,
-                )
-            )
-            d_res = await db.execute(deliv_orders_stmt)
-            delivered_orders = d_res.scalars().all()
-
-            a_res = await db.execute(all_placed_stmt)
-            placed_orders = a_res.scalars().all()
-
-            c_res = await db.execute(canc_orders_stmt)
-            cancelled_orders = c_res.scalars().all()
-
-            r_res = await db.execute(ret_orders_stmt)
-            returned_orders = r_res.scalars().all()
-
+            status_date_filter = and_(Order.updated_at >= start_dt, Order.updated_at <= end_dt)
         else:
-            # Order-date (Cohort) basis:
-            all_placed_stmt = select(Order).where(
-                and_(
-                    Order.tenant_id == tenant_id,
-                    Order.created_at >= start_dt,
-                    Order.created_at <= end_dt,
-                )
+            status_date_filter = and_(Order.created_at >= start_dt, Order.created_at <= end_dt)
+
+        status_agg_stmt = select(
+            Order.status,
+            func.count(Order.id).label("count"),
+            func.coalesce(func.sum(Order.total_amount), Decimal("0.00")).label("revenue"),
+            func.coalesce(func.sum(Order.total_cogs), Decimal("0.00")).label("cogs"),
+            func.coalesce(func.sum(Order.total_packaging_cost), Decimal("0.00")).label("packaging"),
+            func.coalesce(func.sum(Order.total_handling_cost), Decimal("0.00")).label("handling"),
+            func.coalesce(
+                func.sum(
+                    case(
+                        (func.lower(Order.payment_method) != "cod", Order.total_amount * Decimal("0.015")),
+                        else_=Decimal("0.00"),
+                    )
+                ),
+                Decimal("0.00"),
+            ).label("gateway_fees"),
+        ).where(
+            and_(
+                Order.tenant_id == tenant_id,
+                status_date_filter,
+                Order.status.in_([
+                    OrderStatus.DELIVERED.value,
+                    OrderStatus.CANCELLED.value,
+                    OrderStatus.RETURNED.value,
+                    OrderStatus.DELIVERED,
+                    OrderStatus.CANCELLED,
+                    OrderStatus.RETURNED,
+                ]),
             )
-            a_res = await db.execute(all_placed_stmt)
-            placed_orders = a_res.scalars().all()
+        ).group_by(Order.status)
 
-            delivered_orders = [o for o in placed_orders if o.status == OrderStatus.DELIVERED]
-            cancelled_orders = [o for o in placed_orders if o.status == OrderStatus.CANCELLED]
-            returned_orders = [o for o in placed_orders if o.status == OrderStatus.RETURNED]
+        status_rows = (await db.execute(status_agg_stmt)).all()
+        status_map = {}
+        for r in status_rows:
+            st_key = r.status.value if hasattr(r.status, "value") else str(r.status)
+            status_map[st_key] = r
 
-        # Order volume counts
-        total_orders_placed = len(placed_orders)
-        delivered_orders_count = len(delivered_orders)
-        cancelled_orders_count = len(cancelled_orders)
-        returned_orders_count = len(returned_orders)
+        delivered_row = status_map.get(OrderStatus.DELIVERED.value)
+        cancelled_row = status_map.get(OrderStatus.CANCELLED.value)
+        returned_row = status_map.get(OrderStatus.RETURNED.value)
+
+        delivered_orders_count = delivered_row.count if delivered_row else 0
+        cancelled_orders_count = cancelled_row.count if cancelled_row else 0
+        returned_orders_count = returned_row.count if returned_row else 0
 
         delivery_rate_percent = (
             round((delivered_orders_count / total_orders_placed) * 100, 2)
@@ -275,48 +271,43 @@ class FinanceService:
             else 0.0
         )
 
-        # 3. Revenue Line Items
-        gross_sales = Decimal("0.00")
-        for o in placed_orders:
-            gross_sales += Decimal(str(o.total_amount or 0))
+        delivered_revenue = delivered_row.revenue if delivered_row else Decimal("0.00")
+        total_cogs = delivered_row.cogs if delivered_row else Decimal("0.00")
+        packaging_handling_fees = (
+            (delivered_row.packaging + delivered_row.handling)
+            if delivered_row
+            else Decimal("0.00")
+        )
+        payment_gateway_fees = delivered_row.gateway_fees if delivered_row else Decimal("0.00")
 
-        delivered_revenue = Decimal("0.00")
-        total_cogs = Decimal("0.00")
-        packaging_handling_fees = Decimal("0.00")
-        payment_gateway_fees = Decimal("0.00")
+        cancelled_returned_amount = (
+            (cancelled_row.revenue if cancelled_row else Decimal("0.00"))
+            + (returned_row.revenue if returned_row else Decimal("0.00"))
+        )
 
-        for o in delivered_orders:
-            delivered_revenue += Decimal(str(o.total_amount or 0))
-            total_cogs += Decimal(str(o.total_cogs or 0))
-            packaging_handling_fees += Decimal(str(o.total_packaging_cost or 0)) + Decimal(str(o.total_handling_cost or 0))
-            method_str = str(o.payment_method.value if hasattr(o.payment_method, "value") else (o.payment_method or "")).lower()
-            if method_str and method_str != "cod":
-                # Online payments typically have ~1.5% gateway fee
-                payment_gateway_fees += (Decimal(str(o.total_amount or 0)) * Decimal("0.015")).quantize(Decimal("0.01"))
-
-        cancelled_returned_amount = Decimal("0.00")
-        for o in cancelled_orders + returned_orders:
-            cancelled_returned_amount += Decimal(str(o.total_amount or 0))
-
-        # 4. Courier Charges (Delivery + COD fee + Return charges)
-        # Query shipments related to tenant orders in this timeframe
-        shipments_stmt = select(CourierShipment).where(
+        # 4. Courier Charges (Delivery + COD fee + Return charges) directly aggregated in SQL
+        courier_agg_stmt = select(
+            func.coalesce(func.sum(CourierShipment.delivery_fee), Decimal("0.00")).label("delivery_fee"),
+            func.coalesce(func.sum(CourierShipment.cod_fee), Decimal("0.00")).label("cod_fee"),
+            func.coalesce(
+                func.sum(
+                    case(
+                        (CourierShipment.status == ShipmentStatus.RETURNED,
+                         func.coalesce(CourierShipment.return_fee, CourierShipment.delivery_fee, Decimal("0.00"))),
+                        else_=Decimal("0.00"),
+                    )
+                ),
+                Decimal("0.00"),
+            ).label("return_fee"),
+        ).where(
             and_(
                 CourierShipment.tenant_id == tenant_id,
                 CourierShipment.created_at >= start_dt,
                 CourierShipment.created_at <= end_dt,
             )
         )
-        s_res = await db.execute(shipments_stmt)
-        shipments = s_res.scalars().all()
-
-        courier_charges = Decimal("0.00")
-        for sh in shipments:
-            courier_charges += Decimal(str(sh.delivery_fee or 0))
-            courier_charges += Decimal(str(sh.cod_fee or 0))
-            if sh.status == ShipmentStatus.RETURNED:
-                # Return delivery charge is charged by courier
-                courier_charges += Decimal(str(sh.return_fee or sh.delivery_fee or 0))
+        c_agg = (await db.execute(courier_agg_stmt)).one()
+        courier_charges = c_agg.delivery_fee + c_agg.cod_fee + c_agg.return_fee
 
         # Fallback if no explicit shipments: estimate ৳80 delivery fee per delivered + return order
         if courier_charges == Decimal("0.00") and (delivered_orders_count > 0 or returned_orders_count > 0):

@@ -232,40 +232,55 @@ class AdsService:
         if not campaigns:
             return []
 
-        # 2. Fetch insights
-        ins_stmt = select(MetaDailyInsight).where(MetaDailyInsight.tenant_id == tenant_id)
-        ins_res = await db.execute(ins_stmt)
-        insights = ins_res.scalars().all()
-
-        # Group insights by campaign_id
-        insights_by_camp = {}
-        for row in insights:
-            cid = row.campaign_id
-            if cid not in insights_by_camp:
-                insights_by_camp[cid] = {
-                    "spend": Decimal("0.00"),
-                    "impressions": 0,
-                    "clicks": 0,
-                    "meta_purchases": 0,
-                    "meta_conv_val": Decimal("0.00"),
-                    "name": row.campaign_name,
-                }
-            insights_by_camp[cid]["spend"] += row.spend
-            insights_by_camp[cid]["impressions"] += row.impressions
-            insights_by_camp[cid]["clicks"] += row.clicks
-            insights_by_camp[cid]["meta_purchases"] += row.meta_reported_purchases
-            insights_by_camp[cid]["meta_conv_val"] += row.meta_reported_conversion_value
-
-        # 3. Fetch Orders with Attribution for this tenant
-        ord_stmt = (
-            select(Order, OrderAttribution)
-            .outerjoin(OrderAttribution, Order.id == OrderAttribution.order_id)
-            .where(Order.tenant_id == tenant_id)
+        # 2. Fetch aggregated insights grouped by campaign_id via SQL
+        ins_stmt = (
+            select(
+                MetaDailyInsight.campaign_id,
+                func.max(MetaDailyInsight.campaign_name).label("campaign_name"),
+                func.coalesce(func.sum(MetaDailyInsight.spend), Decimal("0.00")).label("spend"),
+                func.coalesce(func.sum(MetaDailyInsight.impressions), 0).label("impressions"),
+                func.coalesce(func.sum(MetaDailyInsight.clicks), 0).label("clicks"),
+                func.coalesce(func.sum(MetaDailyInsight.meta_reported_purchases), 0).label("meta_purchases"),
+                func.coalesce(func.sum(MetaDailyInsight.meta_reported_conversion_value), Decimal("0.00")).label("meta_conv_val"),
+            )
+            .where(MetaDailyInsight.tenant_id == tenant_id)
+            .group_by(MetaDailyInsight.campaign_id)
         )
-        ord_res = await db.execute(ord_stmt)
-        order_records = ord_res.all()
+        ins_res = await db.execute(ins_stmt)
+        insights_by_camp = {
+            row.campaign_id: {
+                "spend": row.spend,
+                "impressions": row.impressions,
+                "clicks": row.clicks,
+                "meta_purchases": row.meta_purchases,
+                "meta_conv_val": row.meta_conv_val,
+                "name": row.campaign_name,
+            }
+            for row in ins_res.all()
+        }
 
-        # 4. Cross-match Orders to Campaigns
+        # 3. Fetch grouped order attributions from SQL (eliminates loading full Order ORM objects)
+        attr_stmt = (
+            select(
+                OrderAttribution.campaign_id,
+                func.lower(OrderAttribution.utm_campaign).label("utm_campaign_lower"),
+                Order.status,
+                func.count(Order.id).label("order_count"),
+                func.coalesce(func.sum(Order.total_amount), Decimal("0.00")).label("delivered_rev"),
+                func.coalesce(func.sum(Order.gross_profit), Decimal("0.00")).label("gross_profit"),
+            )
+            .join(Order, OrderAttribution.order_id == Order.id)
+            .where(Order.tenant_id == tenant_id)
+            .group_by(
+                OrderAttribution.campaign_id,
+                func.lower(OrderAttribution.utm_campaign),
+                Order.status,
+            )
+        )
+        attr_res = await db.execute(attr_stmt)
+        attr_grouped = attr_res.all()
+
+        # 4. Cross-match Orders to Campaigns efficiently
         perf_list = []
         for camp in campaigns:
             cid = camp.campaign_id
@@ -291,7 +306,7 @@ class AdsService:
             meta_conv_val = c_ins["meta_conv_val"]
             claimed_roas = round(float(meta_conv_val / spend), 2) if spend > 0 else 0.0
 
-            # Match orders
+            # Match aggregated orders
             attributed_count = 0
             delivered_count = 0
             returned_count = 0
@@ -300,25 +315,25 @@ class AdsService:
 
             c_name_lower = camp.name.lower().strip()
 
-            for order, attr in order_records:
+            for row in attr_grouped:
                 is_match = False
-                if attr:
-                    if attr.campaign_id and attr.campaign_id == cid:
-                        is_match = True
-                    elif attr.utm_campaign and (
-                        attr.utm_campaign.lower() in c_name_lower
-                        or c_name_lower in attr.utm_campaign.lower()
-                    ):
-                        is_match = True
+                if row.campaign_id and row.campaign_id == cid:
+                    is_match = True
+                elif row.utm_campaign_lower and (
+                    row.utm_campaign_lower in c_name_lower
+                    or c_name_lower in row.utm_campaign_lower
+                ):
+                    is_match = True
 
                 if is_match:
-                    attributed_count += 1
-                    if order.status == OrderStatus.DELIVERED:
-                        delivered_count += 1
-                        delivered_revenue += order.total_amount
-                        gross_profit += order.gross_profit
-                    elif order.status == OrderStatus.RETURNED:
-                        returned_count += 1
+                    attributed_count += row.order_count
+                    status_val = row.status.value if hasattr(row.status, "value") else str(row.status)
+                    if status_val == OrderStatus.DELIVERED.value:
+                        delivered_count += row.order_count
+                        delivered_revenue += row.delivered_rev
+                        gross_profit += row.gross_profit
+                    elif status_val == OrderStatus.RETURNED.value:
+                        returned_count += row.order_count
 
             actual_roas = round(float(delivered_revenue / spend), 2) if spend > 0 else 0.0
             blended_poas = round(float(gross_profit / spend), 2) if spend > 0 else 0.0

@@ -69,3 +69,10 @@ pnpm-debug.log*
 Project_node.md
 Project_note.md
 *.note.md
+
+# =========================
+# Documentation & Local Test Artifacts
+# =========================
+docs/
+product_docs/
+

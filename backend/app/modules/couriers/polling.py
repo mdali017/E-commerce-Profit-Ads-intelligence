@@ -1,6 +1,7 @@
+import asyncio
 import logging
 from datetime import datetime
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, Tuple
 from sqlalchemy import select, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -24,8 +25,7 @@ async def poll_active_shipments(
 ) -> Dict[str, Any]:
     """
     Polls active (non-terminal) courier shipments from external APIs.
-    Primarily used for eCourier (which lacks self-serve webhooks), and
-    available for manual/fallback sync across all couriers.
+    Optimized with credential batch caching and asyncio.Semaphore concurrent API fetching.
     """
     conditions = [CourierShipment.status.in_(ACTIVE_POLL_STATUSES)]
     if tenant_id:
@@ -42,24 +42,62 @@ async def poll_active_shipments(
     res = await db.execute(stmt)
     shipments = res.scalars().all()
 
+    if not shipments:
+        return {
+            "checked": 0,
+            "updated": 0,
+            "errors": 0,
+            "provider": provider.value if provider else "all",
+            "polled_at": datetime.utcnow().isoformat(),
+        }
+
+    # 1. Batch-cache tenant credentials to avoid redundant DB queries per shipment
+    creds_cache: Dict[Tuple[str, CourierProvider], Any] = {}
+    connectors_cache: Dict[CourierProvider, Any] = {}
+
+    for s in shipments:
+        key = (s.tenant_id, s.provider)
+        if key not in creds_cache:
+            creds_cache[key] = await CourierService.get_active_credential(db, s.tenant_id, s.provider)
+        if s.provider not in connectors_cache:
+            connectors_cache[s.provider] = CourierService.get_connector(s.provider)
+
+    # 2. Concurrently fetch tracking status from external courier APIs (throttled to 10 concurrent requests)
+    sem = asyncio.Semaphore(10)
+
+    async def fetch_tracking(shipment):
+        cred = creds_cache.get((shipment.tenant_id, shipment.provider))
+        connector = connectors_cache.get(shipment.provider)
+        if not connector:
+            return shipment, None, Exception(f"No connector for provider {shipment.provider}")
+        async with sem:
+            try:
+                tracking = await connector.get_tracking_status(
+                    credential=cred,
+                    consignment_id=shipment.consignment_id,
+                    invoice_number=shipment.invoice_number,
+                    tracking_code=shipment.tracking_code,
+                )
+                return shipment, tracking, None
+            except Exception as e:
+                return shipment, None, e
+
+    tracking_results = await asyncio.gather(*(fetch_tracking(s) for s in shipments))
+
+    # 3. Apply state transitions sequentially to ensure DB consistency
     checked = 0
     updated = 0
     errors = 0
 
-    for shipment in shipments:
+    for shipment, tracking, error in tracking_results:
         checked += 1
+        shipment.last_polled_at = datetime.utcnow()
+        if error or not tracking:
+            errors += 1
+            logger.warning(f"Polling error for shipment {shipment.consignment_id}: {error}")
+            continue
+
         try:
-            cred = await CourierService.get_active_credential(
-                db, shipment.tenant_id, shipment.provider
-            )
-            connector = CourierService.get_connector(shipment.provider)
-            tracking = await connector.get_tracking_status(
-                credential=cred,
-                consignment_id=shipment.consignment_id,
-                invoice_number=shipment.invoice_number,
-                tracking_code=shipment.tracking_code,
-            )
-            shipment.last_polled_at = datetime.utcnow()
             changed = await CourierService._apply_status_transition(
                 db=db,
                 shipment=shipment,
@@ -75,7 +113,7 @@ async def poll_active_shipments(
                 updated += 1
         except Exception as e:
             errors += 1
-            logger.warning(f"Polling error for shipment {shipment.consignment_id}: {e}")
+            logger.warning(f"Error applying polled status for shipment {shipment.consignment_id}: {e}")
 
     return {
         "checked": checked,

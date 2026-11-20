@@ -12,6 +12,7 @@ from sqlalchemy import (
     DateTime,
     JSON,
     Boolean,
+    Index,
 )
 from sqlalchemy.orm import relationship
 
@@ -74,6 +75,11 @@ class Order(Base, TimestampMixin, TenantMixin):
     Acts as the single source of truth for orders from WooCommerce, Manual F-Commerce, or Landing Pages.
     """
     __tablename__ = "orders"
+    __table_args__ = (
+        Index("ix_orders_tenant_order_date", "tenant_id", "order_date"),
+        Index("ix_orders_tenant_status", "tenant_id", "status"),
+        Index("ix_orders_tenant_status_date", "tenant_id", "status", "order_date"),
+    )
 
     id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     order_number = Column(String(50), nullable=False, index=True)

@@ -4,6 +4,8 @@ from decimal import Decimal
 from datetime import datetime, date, timedelta
 from typing import List, Dict, Any, Optional
 
+from app.core.http import get_http_client
+
 logger = logging.getLogger("meta_connector")
 
 
@@ -33,22 +35,22 @@ class MetaMarketingConnector:
                     "fields": "id,name,objective,status,daily_budget,lifetime_budget",
                     "limit": 100,
                 }
-                async with httpx.AsyncClient(timeout=15.0) as client:
-                    resp = await client.get(url, params=params)
-                    if resp.status_code == 200:
-                        data = resp.json()
-                        campaigns = []
-                        for item in data.get("data", []):
-                            campaigns.append({
-                                "campaign_id": item["id"],
-                                "name": item["name"],
-                                "objective": item.get("objective", "OUTCOME_SALES"),
-                                "status": item.get("status", "ACTIVE"),
-                                "daily_budget": Decimal(str(int(item["daily_budget"]) / 100)) if item.get("daily_budget") else None,
-                                "lifetime_budget": Decimal(str(int(item["lifetime_budget"]) / 100)) if item.get("lifetime_budget") else None,
-                            })
-                        if campaigns:
-                            return campaigns
+                client = get_http_client()
+                resp = await client.get(url, params=params)
+                if resp.status_code == 200:
+                    data = resp.json()
+                    campaigns = []
+                    for item in data.get("data", []):
+                        campaigns.append({
+                            "campaign_id": item["id"],
+                            "name": item["name"],
+                            "objective": item.get("objective", "OUTCOME_SALES"),
+                            "status": item.get("status", "ACTIVE"),
+                            "daily_budget": Decimal(str(int(item["daily_budget"]) / 100)) if item.get("daily_budget") else None,
+                            "lifetime_budget": Decimal(str(int(item["lifetime_budget"]) / 100)) if item.get("lifetime_budget") else None,
+                        })
+                    if campaigns:
+                        return campaigns
             except Exception as e:
                 logger.warning(f"Meta Graph API campaigns request failed, falling back to simulated data: {e}")
 
@@ -101,50 +103,50 @@ class MetaMarketingConnector:
                     "fields": "campaign_id,campaign_name,spend,impressions,clicks,cpc,cpm,ctr,actions,action_values,date_start",
                     "limit": 100,
                 }
-                async with httpx.AsyncClient(timeout=15.0) as client:
-                    resp = await client.get(url, params=params)
-                    if resp.status_code == 200:
-                        data = resp.json()
-                        insights = []
-                        for row in data.get("data", []):
-                            spend = Decimal(str(row.get("spend") or "0.00"))
-                            impressions = int(row.get("impressions") or 0)
-                            clicks = int(row.get("clicks") or 0)
-                            cpc = Decimal(str(row.get("cpc") or "0.00"))
-                            cpm = Decimal(str(row.get("cpm") or "0.00"))
-                            ctr = float(row.get("ctr") or 0.0)
+                client = get_http_client()
+                resp = await client.get(url, params=params)
+                if resp.status_code == 200:
+                    data = resp.json()
+                    insights = []
+                    for row in data.get("data", []):
+                        spend = Decimal(str(row.get("spend") or "0.00"))
+                        impressions = int(row.get("impressions") or 0)
+                        clicks = int(row.get("clicks") or 0)
+                        cpc = Decimal(str(row.get("cpc") or "0.00"))
+                        cpm = Decimal(str(row.get("cpm") or "0.00"))
+                        ctr = float(row.get("ctr") or 0.0)
 
-                            # Parse purchases from actions array
-                            purchases = 0
-                            conversion_val = Decimal("0.00")
-                            for action in row.get("actions", []):
-                                if action.get("action_type") in ("purchase", "omni_purchase"):
-                                    purchases += int(action.get("value") or 0)
+                        # Parse purchases from actions array
+                        purchases = 0
+                        conversion_val = Decimal("0.00")
+                        for action in row.get("actions", []):
+                            if action.get("action_type") in ("purchase", "omni_purchase"):
+                                purchases += int(action.get("value") or 0)
 
-                            for val_action in row.get("action_values", []):
-                                if val_action.get("action_type") in ("purchase", "omni_purchase"):
-                                    conversion_val += Decimal(str(val_action.get("value") or "0.00"))
+                        for val_action in row.get("action_values", []):
+                            if val_action.get("action_type") in ("purchase", "omni_purchase"):
+                                conversion_val += Decimal(str(val_action.get("value") or "0.00"))
 
-                            claimed_roas = float(conversion_val / spend) if spend > 0 else 0.0
+                        claimed_roas = float(conversion_val / spend) if spend > 0 else 0.0
 
-                            report_dt = datetime.strptime(row["date_start"], "%Y-%m-%d").date()
+                        report_dt = datetime.strptime(row["date_start"], "%Y-%m-%d").date()
 
-                            insights.append({
-                                "campaign_id": row["campaign_id"],
-                                "campaign_name": row["campaign_name"],
-                                "report_date": report_dt,
-                                "spend": spend,
-                                "impressions": impressions,
-                                "clicks": clicks,
-                                "cpc": cpc,
-                                "cpm": cpm,
-                                "ctr": ctr,
-                                "meta_reported_purchases": purchases,
-                                "meta_reported_conversion_value": conversion_val,
-                                "meta_claimed_roas": round(claimed_roas, 2),
-                            })
-                        if insights:
-                            return insights
+                        insights.append({
+                            "campaign_id": row["campaign_id"],
+                            "campaign_name": row["campaign_name"],
+                            "report_date": report_dt,
+                            "spend": spend,
+                            "impressions": impressions,
+                            "clicks": clicks,
+                            "cpc": cpc,
+                            "cpm": cpm,
+                            "ctr": ctr,
+                            "meta_reported_purchases": purchases,
+                            "meta_reported_conversion_value": conversion_val,
+                            "meta_claimed_roas": round(claimed_roas, 2),
+                        })
+                    if insights:
+                        return insights
             except Exception as e:
                 logger.warning(f"Meta Graph API insights request failed, falling back to simulated data: {e}")
 

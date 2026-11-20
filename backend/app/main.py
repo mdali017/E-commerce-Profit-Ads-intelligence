@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.core.database import engine, Base, get_db
+from app.core.http import close_http_client
 from app.modules.couriers.migrations import ensure_courier_schema
 from app.modules.couriers.tasks import courier_background_sync_loop
 
@@ -51,6 +52,7 @@ async def lifespan(app: FastAPI):
         with suppress(asyncio.CancelledError):
             await sync_task
         # Shutdown
+        await close_http_client()
         await engine.dispose()
 
 
