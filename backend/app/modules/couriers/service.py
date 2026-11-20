@@ -1,4 +1,5 @@
 import hmac
+import asyncio
 import logging
 from decimal import Decimal
 from datetime import datetime, timedelta
@@ -624,39 +625,107 @@ class CourierService:
                     )
             await db.commit()
         else:
-            for order in eligible_orders:
-                try:
-                    ship = await cls.dispatch_order(
-                        db,
-                        tenant_id,
-                        BookShipmentRequest(
-                            order_id=order.id,
-                            provider=req.provider,
-                            notes=req.notes,
-                            delivery_type=req.delivery_type,
+            connector = cls.get_connector(req.provider)
+            sem = asyncio.Semaphore(5)
+
+            async def create_single_parcel(order: Order):
+                cod_amount = order.total_amount
+                city_val = order.shipping_city
+                async with sem:
+                    try:
+                        booking_result = await connector.create_parcel(
+                            credential=cred,
+                            invoice_number=order.order_number,
+                            recipient_name=order.customer_name,
+                            recipient_phone=order.customer_phone,
+                            recipient_address=order.shipping_address,
+                            cod_amount=cod_amount,
+                            notes=req.notes or order.internal_notes,
+                            recipient_city=city_val,
                             item_weight=req.item_weight,
-                        ),
-                        user_id=user_id,
+                            delivery_type=req.delivery_type,
+                            item_description=f"Order {order.order_number}",
+                            item_quantity=1,
+                            db=db,
+                        )
+                        return (order, booking_result, None)
+                    except Exception as e:
+                        return (order, None, e)
+
+            api_tasks = await asyncio.gather(*(create_single_parcel(o) for o in eligible_orders))
+
+            for order, booking_result, err in api_tasks:
+                if err or not booking_result:
+                    results.append(
+                        BulkDispatchItemResult(
+                            order_id=order.id,
+                            order_number=order.order_number,
+                            success=False,
+                            error=str(getattr(err, "detail", str(err))),
+                        )
+                    )
+                else:
+                    cod_amount = order.total_amount
+                    delivery_fee = booking_result.get("delivery_fee", Decimal("60.00"))
+                    cod_fee = (cod_amount * Decimal("0.01")).quantize(Decimal("0.01"))
+                    shipment = CourierShipment(
+                        tenant_id=tenant_id,
+                        order_id=order.id,
+                        provider=req.provider,
+                        consignment_id=booking_result["consignment_id"],
+                        tracking_code=booking_result.get("tracking_code"),
+                        invoice_number=order.order_number,
+                        status=booking_result.get("status", ShipmentStatus.BOOKED),
+                        raw_status=booking_result.get("raw_status"),
+                        recipient_name=order.customer_name,
+                        recipient_phone=order.customer_phone,
+                        recipient_address=order.shipping_address,
+                        recipient_city=order.shipping_city,
+                        item_weight=req.item_weight,
+                        delivery_type=req.delivery_type,
+                        cod_amount=cod_amount,
+                        delivery_fee=delivery_fee,
+                        cod_fee=cod_fee,
+                        estimated_delivery_date=datetime.utcnow() + timedelta(days=2),
+                        notes=req.notes,
+                    )
+                    db.add(shipment)
+                    await db.flush()
+
+                    db.add(
+                        CourierTrackingEvent(
+                            shipment_id=shipment.id,
+                            event_status="BOOKED",
+                            raw_status=str(booking_result.get("raw_status") or "booked"),
+                            message=f"Bulk dispatched via {req.provider.value.title()} (CID: {shipment.consignment_id})",
+                            location=order.shipping_city or "Merchant Warehouse",
+                            source="dispatch",
+                            timestamp=datetime.utcnow(),
+                        )
+                    )
+                    old_st = order.status
+                    order.status = OrderStatus.IN_COURIER.value
+                    db.add(
+                        OrderStatusHistory(
+                            order_id=order.id,
+                            tenant_id=tenant_id,
+                            from_status=old_st.value if hasattr(old_st, "value") else str(old_st),
+                            to_status=OrderStatus.IN_COURIER.value,
+                            changed_by_user_id=user_id,
+                            reason=f"Bulk dispatched via {req.provider.value.title()} (Consignment #{shipment.consignment_id})",
+                        )
                     )
                     results.append(
                         BulkDispatchItemResult(
                             order_id=order.id,
                             order_number=order.order_number,
                             success=True,
-                            consignment_id=ship.consignment_id,
-                            tracking_code=ship.tracking_code,
-                            shipment_id=ship.id,
+                            consignment_id=shipment.consignment_id,
+                            tracking_code=shipment.tracking_code,
+                            shipment_id=shipment.id,
                         )
                     )
-                except Exception as e:
-                    results.append(
-                        BulkDispatchItemResult(
-                            order_id=order.id,
-                            order_number=order.order_number,
-                            success=False,
-                            error=str(getattr(e, "detail", str(e))),
-                        )
-                    )
+            await db.commit()
 
         succeeded = sum(1 for r in results if r.success)
         return BulkDispatchResponse(

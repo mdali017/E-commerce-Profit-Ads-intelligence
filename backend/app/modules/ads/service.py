@@ -113,16 +113,21 @@ class AdsService:
             account.account_id, account.access_token
         )
 
+        # Batch lookup existing campaigns for this tenant in 1 query
+        c_ids = [c["campaign_id"] for c in campaigns_data]
+        existing_stmt = select(MetaCampaign).where(
+            and_(
+                MetaCampaign.tenant_id == tenant_id,
+                MetaCampaign.campaign_id.in_(c_ids),
+            )
+        )
+        existing_res = await db.execute(existing_stmt)
+        existing_by_cid = {c.campaign_id: c for c in existing_res.scalars().all()}
+
         synced = []
         for c_data in campaigns_data:
-            stmt = select(MetaCampaign).where(
-                and_(
-                    MetaCampaign.tenant_id == tenant_id,
-                    MetaCampaign.campaign_id == c_data["campaign_id"],
-                )
-            )
-            res = await db.execute(stmt)
-            existing = res.scalar_one_or_none()
+            cid = c_data["campaign_id"]
+            existing = existing_by_cid.get(cid)
 
             if existing:
                 existing.name = c_data["name"]
@@ -134,7 +139,7 @@ class AdsService:
                 new_c = MetaCampaign(
                     tenant_id=tenant_id,
                     ad_account_id=account.id,
-                    campaign_id=c_data["campaign_id"],
+                    campaign_id=cid,
                     name=c_data["name"],
                     objective=c_data.get("objective"),
                     status=c_data.get("status", "ACTIVE"),
@@ -161,18 +166,27 @@ class AdsService:
             account.account_id, account.access_token
         )
 
+        # Batch lookup existing insights for this tenant and ad account in 1 query
+        camp_ids = list({row["campaign_id"] for row in insights_data})
+        report_dates = list({row["report_date"] for row in insights_data})
+
+        existing_stmt = select(MetaDailyInsight).where(
+            and_(
+                MetaDailyInsight.tenant_id == tenant_id,
+                MetaDailyInsight.ad_account_id == account.id,
+                MetaDailyInsight.campaign_id.in_(camp_ids),
+                MetaDailyInsight.report_date.in_(report_dates),
+            )
+        )
+        existing_res = await db.execute(existing_stmt)
+        existing_map = {
+            (r.campaign_id, r.report_date): r for r in existing_res.scalars().all()
+        }
+
         synced = []
         for row in insights_data:
-            stmt = select(MetaDailyInsight).where(
-                and_(
-                    MetaDailyInsight.tenant_id == tenant_id,
-                    MetaDailyInsight.ad_account_id == account.id,
-                    MetaDailyInsight.campaign_id == row["campaign_id"],
-                    MetaDailyInsight.report_date == row["report_date"],
-                )
-            )
-            res = await db.execute(stmt)
-            existing = res.scalar_one_or_none()
+            key = (row["campaign_id"], row["report_date"])
+            existing = existing_map.get(key)
 
             if existing:
                 existing.spend = row["spend"]

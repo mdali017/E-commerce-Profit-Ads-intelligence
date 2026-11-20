@@ -82,20 +82,27 @@ class OrderSyncQueueService:
                 updated_items_count += 1
                 affected_order_ids.add(item.order_id)
 
-        # Recalculate financial totals for affected orders
+        # Recalculate financial totals for affected orders in batch (2 queries instead of 2 * N queries)
+        orders_stmt = select(Order).where(
+            and_(Order.tenant_id == tenant_id, Order.id.in_(affected_order_ids))
+        )
+        orders_res = await db.execute(orders_stmt)
+        orders_map = {o.id: o for o in orders_res.scalars().all()}
+
+        items_stmt = select(OrderItem).where(
+            OrderItem.order_id.in_(affected_order_ids)
+        )
+        items_res = await db.execute(items_stmt)
+        items_by_order: Dict[str, List[OrderItem]] = {}
+        for it in items_res.scalars().all():
+            items_by_order.setdefault(it.order_id, []).append(it)
+
         for order_id in affected_order_ids:
-            order_res = await db.execute(
-                select(Order).where(Order.id == order_id)
-            )
-            order = order_res.scalar_one_or_none()
+            order = orders_map.get(order_id)
             if not order:
                 continue
 
-            # Load all items for this order
-            items_res = await db.execute(
-                select(OrderItem).where(OrderItem.order_id == order_id)
-            )
-            all_items = items_res.scalars().all()
+            all_items = items_by_order.get(order_id, [])
 
             new_cogs = Decimal("0.00")
             new_pkg = Decimal("0.00")
