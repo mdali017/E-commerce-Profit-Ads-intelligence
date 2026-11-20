@@ -8,10 +8,12 @@ import {
   CourierCredential,
 } from "@/types";
 import { couriersApi } from "@/lib/couriers";
+import { jobsApi, BackgroundJob } from "@/lib/jobs";
 import { CourierStats } from "@/components/couriers/CourierStats";
 import { ShipmentTable } from "@/components/couriers/ShipmentTable";
 import { ConfigureCourierModal } from "@/components/couriers/ConfigureCourierModal";
 import { ShipmentDetailDrawer } from "@/components/couriers/ShipmentDetailDrawer";
+import { BackgroundJobToast } from "@/components/shared/BackgroundJobToast";
 import {
   Truck,
   RefreshCw,
@@ -41,6 +43,7 @@ export default function CouriersPage() {
   const [credentials, setCredentials] = useState<CourierCredential[]>([]);
   const [loading, setLoading] = useState(true);
   const [polling, setPolling] = useState(false);
+  const [activeJob, setActiveJob] = useState<BackgroundJob | null>(null);
   const [pollNote, setPollNote] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -119,10 +122,24 @@ export default function CouriersPage() {
     setPolling(true);
     setPollNote(null);
     try {
-      const res = await couriersApi.pollActiveShipments("ecourier");
-      setPollNote(
-        `eCourier sync complete: checked ${res.checked} active parcel(s), updated ${res.updated}.`
-      );
+      const init = await jobsApi.triggerCourierSync();
+      setActiveJob({
+        job_id: init.job_id,
+        type: "courier_polling",
+        status: "queued",
+        progress: 10,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      });
+      const completedJob = await jobsApi.pollJobUntilDone(init.job_id, (job) => {
+        setActiveJob(job);
+      });
+      const summary = completedJob.result?.courier_summary;
+      if (summary) {
+        setPollNote(
+          `Courier sync complete: checked ${summary.checked || 0} parcel(s), updated ${summary.updated || 0}.`
+        );
+      }
       await loadData();
     } catch (err: any) {
       setPollNote(err?.message || "Polling failed.");
@@ -363,6 +380,13 @@ export default function CouriersPage() {
           setSelectedShipment(updated);
           loadData();
         }}
+      />
+
+      {/* Floating Background Sync Toast */}
+      <BackgroundJobToast
+        job={activeJob}
+        onDismiss={() => setActiveJob(null)}
+        title="Courier Shipment Polling"
       />
     </div>
   );

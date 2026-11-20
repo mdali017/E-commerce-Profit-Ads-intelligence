@@ -3,9 +3,11 @@
 import { useEffect, useState, useCallback } from "react";
 import { CampaignPerformanceItem, AdsKPIStats } from "@/types";
 import { adsApi } from "@/lib/ads";
+import { jobsApi, BackgroundJob } from "@/lib/jobs";
 import { AdsStats } from "@/components/ads/AdsStats";
 import { CampaignTable } from "@/components/ads/CampaignTable";
 import { ConnectMetaModal } from "@/components/ads/ConnectMetaModal";
+import { BackgroundJobToast } from "@/components/shared/BackgroundJobToast";
 import {
   TrendingUp,
   RefreshCw,
@@ -20,6 +22,7 @@ export default function AdsPage() {
   const [kpis, setKpis] = useState<AdsKPIStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
+  const [activeJob, setActiveJob] = useState<BackgroundJob | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isConnectModalOpen, setIsConnectModalOpen] = useState(false);
 
@@ -51,7 +54,18 @@ export default function AdsPage() {
   const handleSyncInsights = async () => {
     setSyncing(true);
     try {
-      await adsApi.syncDailyInsights();
+      const init = await jobsApi.triggerAdsInsights();
+      setActiveJob({
+        job_id: init.job_id,
+        type: "meta_insights_sync",
+        status: "queued",
+        progress: 10,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      });
+      await jobsApi.pollJobUntilDone(init.job_id, (job) => {
+        setActiveJob(job);
+      });
       await loadData();
     } catch (err: any) {
       alert(err?.message || "Failed to sync Meta insights.");
@@ -122,6 +136,13 @@ export default function AdsPage() {
         isOpen={isConnectModalOpen}
         onClose={() => setIsConnectModalOpen(false)}
         onConnected={loadData}
+      />
+
+      {/* Floating Background Sync Toast */}
+      <BackgroundJobToast
+        job={activeJob}
+        onDismiss={() => setActiveJob(null)}
+        title="Meta Ads Insights Sync"
       />
     </div>
   );
