@@ -1,4 +1,4 @@
-from typing import List, Union
+from typing import List, Union, Optional
 from pydantic import AnyHttpUrl, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 import email_validator
@@ -17,6 +17,11 @@ class Settings(BaseSettings):
     # Database
     # Standard format: postgresql+asyncpg://user:pass@host/dbname
     DATABASE_URL: str = "sqlite+aiosqlite:///./test.db"
+
+    # Redis / Upstash Cache & Task Queue
+    UPSTASH_REDIS_REST_URL: Optional[str] = None
+    UPSTASH_REDIS_REST_TOKEN: Optional[str] = None
+    REDIS_URL: Optional[str] = None
 
     # Security & JWT
     SECRET_KEY: str = "supersecretdevelopmentkeythatisatleast32byteslong123456"

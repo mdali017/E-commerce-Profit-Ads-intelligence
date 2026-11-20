@@ -7,6 +7,7 @@ from sqlalchemy import select, and_, or_, func, desc
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
+from app.core.redis import get_cache, set_cache
 from app.modules.analytics.models import (
     ExecutiveAlert,
     AlertType,
@@ -85,6 +86,15 @@ class AnalyticsService:
         Bleeding Ad alerts, and revenue distribution by source.
         """
         start_date, end_date = cls.resolve_date_range(date_range, custom_start, custom_end)
+
+        # Check Upstash Redis Cache first (TTL: 5 minutes)
+        cache_key = f"overview:{tenant_id}:{date_range}:{start_date.isoformat()}:{end_date.isoformat()}"
+        cached_data = await get_cache(cache_key)
+        if cached_data:
+            try:
+                return ExecutiveOverviewResponse(**cached_data)
+            except Exception:
+                pass
 
         # 1. P&L Financial Waterfall
         pnl = await FinanceService.get_pnl_summary(db, tenant_id, start_date, end_date)
@@ -322,7 +332,7 @@ class AnalyticsService:
             is_fresh_workspace=is_fresh,
         )
 
-        return ExecutiveOverviewResponse(
+        resp = ExecutiveOverviewResponse(
             date_range=date_range,
             start_date=start_date.isoformat(),
             end_date=end_date.isoformat(),
@@ -333,6 +343,8 @@ class AnalyticsService:
             daily_trends=daily_trends,
             integrations=integrations,
         )
+        await set_cache(cache_key, resp.model_dump(mode="json"), ttl_seconds=300)
+        return resp
 
     @classmethod
     async def _sync_system_alerts(

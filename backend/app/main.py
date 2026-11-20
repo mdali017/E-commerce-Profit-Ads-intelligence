@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import settings
 from app.core.database import engine, Base, get_db
 from app.core.http import close_http_client
+from app.core.redis import ping_redis
 from app.modules.couriers.migrations import ensure_courier_schema
 from app.modules.couriers.tasks import courier_background_sync_loop
 
@@ -34,6 +35,7 @@ from app.modules.ads.router import router as ads_router
 from app.modules.finance.router import router as finance_router
 from app.modules.crm.router import router as crm_router
 from app.modules.analytics.router import router as analytics_router
+from app.modules.jobs.router import router as jobs_router
 
 
 @asynccontextmanager
@@ -94,16 +96,20 @@ async def root():
 
 @app.get("/health", tags=["Health Check"])
 async def health_check(db: AsyncSession = Depends(get_db)):
-    """Verifies that both API service and Database engine are healthy and reachable."""
+    """Verifies that both API service, Database engine, and Redis cache are healthy and reachable."""
     try:
         result = await db.execute(text("SELECT 1"))
         db_status = "connected" if result.scalar() == 1 else "unexpected_result"
     except Exception as e:
         db_status = f"error: {str(e)}"
 
+    redis_ok = await ping_redis()
+    redis_status = "connected" if redis_ok else "offline"
+
     return {
         "status": "healthy",
         "database": db_status,
+        "redis": redis_status,
         "environment": settings.ENVIRONMENT,
     }
 
@@ -119,4 +125,5 @@ app.include_router(ads_router, prefix=settings.API_V1_STR)
 app.include_router(finance_router, prefix=settings.API_V1_STR)
 app.include_router(crm_router, prefix=settings.API_V1_STR)
 app.include_router(analytics_router, prefix=settings.API_V1_STR)
+app.include_router(jobs_router, prefix=settings.API_V1_STR)
 
