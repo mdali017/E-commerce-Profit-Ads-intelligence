@@ -29,6 +29,7 @@ export const authStorage = {
   setToken(token: string) {
     if (typeof window === "undefined") return;
     localStorage.setItem(TOKEN_KEY, token);
+    document.cookie = `${TOKEN_KEY}=${token}; path=/; max-age=604800; SameSite=Lax`;
   },
 
   clearAuth() {
@@ -36,6 +37,7 @@ export const authStorage = {
     localStorage.removeItem(TOKEN_KEY);
     localStorage.removeItem(USER_KEY);
     localStorage.removeItem(ACTIVE_TENANT_KEY);
+    document.cookie = `${TOKEN_KEY}=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT`;
   },
 
   getUser(): UserProfile | null {

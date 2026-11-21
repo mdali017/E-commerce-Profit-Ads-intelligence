@@ -180,7 +180,7 @@ class OrderStatusHistory(Base, TimestampMixin, TenantMixin):
     reason = Column(String(255), nullable=True)  # e.g. "Customer confirmed via phone call"
 
     order = relationship("Order", back_populates="status_history")
-    changed_by = relationship("app.modules.auth.models.User", foreign_keys=[changed_by_user_id])
+    changed_by = relationship("User", foreign_keys=[changed_by_user_id])
 
 
 class OrderAttribution(Base, TimestampMixin, TenantMixin):
